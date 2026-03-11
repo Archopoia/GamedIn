@@ -1,13 +1,23 @@
 /**
  * GamedIn extension background script.
- * Receives apply events from LinkedIn content script and stores them for the game to consume.
+ * Receives apply events and activity from LinkedIn content script; stores for game.
  */
 
 const LOG = (...args) => console.log('[GamedIn Background]', ...args)
 
 const STORAGE_KEY = 'gamedin.pendingLogs'
+const ACTIVITY_KEY = 'gamedin.activity'
+const ACTIVITY_MAX = 200
 
 LOG('Background script loaded')
+
+function pushActivity(entry) {
+  chrome.storage.local.get(ACTIVITY_KEY, (result) => {
+    const activity = result[ACTIVITY_KEY] || []
+    activity.push(entry)
+    chrome.storage.local.set({ [ACTIVITY_KEY]: activity.slice(-ACTIVITY_MAX) })
+  })
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   LOG('onMessage received', { type: message?.type, sender: sender?.tab?.url || sender?.url })
@@ -25,5 +35,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       })
     })
     return true
+  }
+  if (message.type === 'GAMEDIN_ACTIVITY') {
+    const payload = message.payload || {}
+    pushActivity({ type: payload.event, ...payload })
+    LOG('GAMEDIN_ACTIVITY', payload.event, payload)
+    return false
   }
 })

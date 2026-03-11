@@ -54,6 +54,7 @@ GamedIn aims to hook directly into job-application activity (searching, parsing,
 **Extension Capabilities (aligned with existing apps):**
 - Detect apply confirmation (success state, URL change, or DOM signal).
 - Read job title and company from the current page for reward context.
+- **Activity tracking:** Search keywords, job list, job clicks, job views—same as Huntr/JobPilot.
 - Optional: Add subtle badges (e.g., "Logged") on job cards—Huntr and LinkedIn Job Tracker do this.
 - Separate game window; no injection of game UI into LinkedIn beyond optional lightweight badges.
 

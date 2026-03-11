@@ -8,11 +8,24 @@
 const LOG = (...args) => console.log('[GamedIn Game]', ...args)
 
 const STORAGE_KEY = 'gamedin.pendingLogs'
+const ACTIVITY_KEY = 'gamedin.activity'
 const EVENT_NAME = 'gamedin-apply-logged'
 const READY_EVENT = 'gamedin-extension-ready'
+const GET_ACTIVITY_EVENT = 'gamedin-get-activity'
+const ACTIVITY_EVENT = 'gamedin-activity'
 const POLL_INTERVAL_MS = 2000
 
 LOG('Content script loaded', { url: window.location.href })
+
+function fetchActivity() {
+  try {
+    if (typeof chrome === 'undefined' || !chrome?.storage?.local) return
+    chrome.storage.local.get(ACTIVITY_KEY, (result) => {
+      const activity = result?.[ACTIVITY_KEY] || []
+      window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT, { detail: { activity } }))
+    })
+  } catch (_) {}
+}
 
 function dispatchLogs(logs) {
   LOG('dispatchLogs', { count: logs.length, logs })
@@ -65,4 +78,5 @@ function onReady() {
 }
 
 window.addEventListener(READY_EVENT, onReady)
+window.addEventListener(GET_ACTIVITY_EVENT, fetchActivity)
 LOG('Listening for', READY_EVENT)

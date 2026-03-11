@@ -17,6 +17,19 @@ Zero-effort job application tracking. When you Easy Apply on LinkedIn, the exten
 4. **Game content script** runs on the GamedIn page (localhost, Vercel, Netlify). When the game loads, it fetches pending logs and dispatches `gamedin-apply-logged` CustomEvents.
 5. **Game** listens for the event and grants rewards via `applyLoggedCommand`.
 
+## Activity Tracking
+
+Tracks LinkedIn activity (aligned with Huntr, JobPilot). Stored in `gamedin.activity`:
+
+| Event | When | Payload |
+|-------|------|---------|
+| `search` | URL has `keywords` param | keywords, location, geoId |
+| `job_viewed` | URL has `currentJobId` | jobId |
+| `job_clicked` | User clicks a job card | jobId, title, company |
+| `job_list` | Job cards visible in list | count, jobs (title, company, jobId) |
+
+The game fetches activity by dispatching `gamedin-get-activity`; the extension responds with `gamedin-activity` containing `{ activity: [...] }`. Use for game mechanics (e.g. rewarding search, browsing, clicks).
+
 ## Supported Origins
 
 The extension injects into the game on:

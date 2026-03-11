@@ -6,6 +6,7 @@ import { isDevMode } from './lib/devMode'
 import { toTelemetryEvent } from './domain/events'
 import { applicationInputSchema, profileSchema } from './domain/validation'
 import { Pasture } from './game/Pasture'
+import { StatsPanel } from './game/StatsPanel'
 import { initAnalytics, trackEvent } from './lib/analytics'
 import {
   applyLoggedCommand,
@@ -16,7 +17,18 @@ import {
 } from './state/gameState'
 import { loadState, saveState } from './state/saveSync'
 
-type TabId = 'extension' | 'profile' | 'shop' | 'dev'
+type TabId = 'extension' | 'stats' | 'profile' | 'shop' | 'dev'
+
+interface ActivityEvent {
+  event: string
+  timestamp?: number
+  keywords?: string
+  jobId?: string
+  title?: string
+  company?: string
+  count?: number
+  jobs?: Array<{ jobId: string; title: string; company: string }>
+}
 
 function App() {
   const [state, setState] = useState(() => {
@@ -33,6 +45,7 @@ function App() {
   })
   const [message, setMessage] = useState('Welcome to your cozy application loop.')
   const [capInput, setCapInput] = useState(state.engagement.dailyRewardCap.toString())
+  const [activity, setActivity] = useState<ActivityEvent[]>([])
 
   useEffect(() => {
     initAnalytics()
@@ -86,6 +99,25 @@ function App() {
     state.telemetryQueue.forEach((event) => trackEvent(event))
   }, [state])
 
+  const fetchActivity = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('gamedin-get-activity'))
+    }
+  }
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent<{ activity: ActivityEvent[] }>
+      setActivity(ev.detail?.activity || [])
+    }
+    window.addEventListener('gamedin-activity', handler)
+    return () => window.removeEventListener('gamedin-activity', handler)
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'stats') fetchActivity()
+  }, [activeTab])
+
   const todayProgress = useMemo(() => {
     const ratio = Math.min(1, state.engagement.appliesToday / state.profile.dailyApplyGoal)
     return Math.round(ratio * 100)
@@ -128,6 +160,7 @@ function App() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'extension', label: 'Extension' },
+    { id: 'stats', label: 'Stats' },
     { id: 'profile', label: 'Profile' },
     { id: 'shop', label: 'Shop' },
     ...(isDevMode ? [{ id: 'dev' as TabId, label: 'Dev' }] : []),
@@ -187,6 +220,14 @@ function App() {
                 </ol>
                 <p>Keep this tab open and apply on LinkedIn. Rewards appear automatically.</p>
               </div>
+            )}
+
+            {activeTab === 'stats' && (
+              <StatsPanel
+                state={state}
+                activity={activity}
+                onRefresh={fetchActivity}
+              />
             )}
 
             {activeTab === 'profile' && (

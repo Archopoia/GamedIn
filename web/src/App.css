@@ -295,3 +295,99 @@ button:hover {
   margin-left: auto;
   color: #e8a080;
 }
+
+/* Stats panel */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  background: #0d1f18;
+  border-radius: 6px;
+  border: 1px solid #2f5345;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #6ed6a3;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #7a9a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.activity-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #94ac9d;
+  margin-bottom: 0.5rem;
+}
+
+.stats-hint {
+  font-size: 0.75rem;
+  color: #7a9a8a;
+  margin: 0 0 0.5rem;
+}
+
+.stats-refresh {
+  margin-bottom: 1rem;
+}
+
+.activity-feed {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.activity-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #1c382f;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-type {
+  font-weight: 600;
+  color: #6ed6a3;
+  min-width: 5rem;
+}
+
+.activity-detail {
+  color: #94ac9d;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-time {
+  margin-left: auto;
+  font-size: 0.7rem;
+  color: #5a7a6a;
+}
+
+.stats-empty {
+  font-size: 0.85rem;
+  color: #7a9a8a;
+  margin: 0;
+}

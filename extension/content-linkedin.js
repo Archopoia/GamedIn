@@ -232,12 +232,38 @@
     }
   }
 
+  let jobListDebounce = null
+  let lastJobListKey = ''
+  function captureJobList() {
+    const cards = document.querySelectorAll('.job-card-container, .scaffold-layout__list-item [data-occludable-job-id], .jobs-search-results__list-item, [data-occludable-job-id]')
+    if (cards.length < 2) return
+    const jobs = []
+    cards.forEach((card) => {
+      const jobId = card.getAttribute('data-occludable-job-id') || card.getAttribute('data-job-id') || ''
+      const tEl = card.querySelector('.base-search-card__title, .job-card-list__title, h3, [class*="title"]')
+      const cEl = card.querySelector('.base-search-card__subtitle, [class*="company"]')
+      const title = tEl ? (tEl.textContent || '').trim().slice(0, 80) : ''
+      const company = cEl ? (cEl.textContent || '').trim().slice(0, 80) : ''
+      if (title || jobId) jobs.push({ jobId, title, company })
+    })
+    if (jobs.length > 0) {
+      const key = jobs.map((j) => j.jobId).join(',')
+      if (key !== lastJobListKey) {
+        lastJobListKey = key
+        LOG('Activity: job_list', { count: jobs.length, sample: jobs.slice(0, 3) })
+        sendActivity('job_list', { count: jobs.length, jobs: jobs.slice(0, 50) })
+      }
+    }
+  }
+
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       for (const node of m.addedNodes) {
         checkNode(node)
       }
     }
+    clearTimeout(jobListDebounce)
+    jobListDebounce = setTimeout(captureJobList, 800)
   })
 
   if (document.body) {
@@ -250,4 +276,82 @@
       LOG('MutationObserver started on document.body (after DOMContentLoaded)')
     })
   }
+
+  function sendActivity(eventType, payload) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'GAMEDIN_ACTIVITY',
+        payload: { event: eventType, ...payload, timestamp: Date.now() },
+      })
+    } catch (_) {}
+  }
+
+  let lastUrl = window.location.href
+  const lastActivitySent = {}
+  const ACTIVITY_DEBOUNCE_MS = 3000
+
+  function parseUrlParams() {
+    const u = new URL(window.location.href)
+    const params = {}
+    u.searchParams.forEach((v, k) => { params[k] = v })
+    return params
+  }
+
+  function extractSearchContext() {
+    const params = parseUrlParams()
+    const keywords = params.keywords ? decodeURIComponent(params.keywords) : null
+    const currentJobId = (window.location.href.match(/currentJobId=(\d+)/) || [])[1]
+    const location = params.location ? decodeURIComponent(params.location) : null
+    const geoId = params.geoId || null
+    return { keywords, currentJobId, location, geoId }
+  }
+
+  function onUrlChange() {
+    const url = window.location.href
+    if (url === lastUrl) return
+    lastUrl = url
+    if (!url.includes('linkedin.com/jobs')) return
+    const ctx = extractSearchContext()
+    if (ctx.keywords && ctx.keywords !== lastActivitySent.search_keyword) {
+      lastActivitySent.search_keyword = ctx.keywords
+      LOG('Activity: search', ctx)
+      sendActivity('search', { keywords: ctx.keywords, location: ctx.location, geoId: ctx.geoId })
+    }
+    if (ctx.currentJobId && ctx.currentJobId !== lastActivitySent.job_viewed) {
+      lastActivitySent.job_viewed = ctx.currentJobId
+      LOG('Activity: job_viewed', { jobId: ctx.currentJobId })
+      sendActivity('job_viewed', { jobId: ctx.currentJobId })
+    }
+  }
+
+  setInterval(onUrlChange, 1500)
+  onUrlChange()
+
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest?.('a[href*="/jobs/view/"], a[href*="currentJobId="], .job-card-container a, .base-card a, [data-job-id]')
+    if (!link) return
+    const href = link.getAttribute('href') || ''
+    const jobIdMatch = href.match(/currentJobId=(\d+)|(\d{8,})/) || []
+    const jobId = jobIdMatch[1] || jobIdMatch[2]
+    const card = link.closest?.('.job-card-container, .base-card, [data-occludable-job-id], [data-job-id]')
+    let title = ''
+    let company = ''
+    if (card) {
+      const tEl = card.querySelector('.base-search-card__title, .job-card-list__title, h3, [class*="job-title"]')
+      const cEl = card.querySelector('.base-search-card__subtitle, [class*="company"]')
+      if (tEl) title = (tEl.textContent || '').trim().slice(0, 80)
+      if (cEl) company = (cEl.textContent || '').trim().slice(0, 80)
+    }
+    if (jobId || title) {
+      const key = `click-${jobId || title}`
+      const now = Date.now()
+      if (!lastActivitySent[key] || now - lastActivitySent[key] > ACTIVITY_DEBOUNCE_MS) {
+        lastActivitySent[key] = now
+        LOG('Activity: job_clicked', { jobId, title, company })
+        sendActivity('job_clicked', { jobId, title, company })
+      }
+    }
+  }, true)
+
+  LOG('Activity tracking started (search, job_viewed, job_clicked, job_list)')
 })()
