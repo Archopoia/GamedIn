@@ -1,0 +1,60 @@
+---
+description: Unified AI-first build rule for GamedIn
+alwaysApply: true
+---
+# GamedIn Core Rule (AI-First Vibecoding)
+
+Build fast with AI, but keep the codebase clean, typed, and legally safe.
+
+## Product Intent
+
+- GamedIn is a cozy, rewarding layer on top of real job-application effort.
+- Prioritize habit-building loops, immediate feedback, and low-friction UX.
+- Optimize for fast iteration with AI while preserving long-term maintainability.
+
+## AI-First Delivery Workflow
+
+1. Treat AI as primary implementation partner: generate, refactor, and test with AI support in each session.
+2. Prefer end-to-end slices (feature + persistence + basic tests + docs) over partial scaffolding.
+3. Keep prompts/specs explicit and deterministic; avoid ambiguous "magic" behavior.
+4. Before introducing external APIs/libraries, verify current usage/docs with Context7 when available.
+
+## Architecture and Boundaries
+
+- TypeScript is the orchestration layer; keep hot paths data-oriented and isolated for possible worker/WASM acceleration.
+- Separate simulation backing state from gameplay-facing surface interactions.
+- Avoid monolithic "god systems": extract reusable modules early.
+- Use plugin/module boundaries for optional features; avoid hidden cross-module coupling.
+
+## Type Safety and Code Quality
+
+- No `any`. Use `unknown` + type guards when needed.
+- Exported functions require explicit parameter and return types.
+- Shared contracts belong in centralized type files.
+- Do not use `@ts-ignore` or `@ts-expect-error` without a short justification comment.
+
+## Migration and Naming Discipline
+
+- Do full migrations: remove deprecated aliases and compatibility shims in the same change.
+- Keep one canonical term per concept across code, UI, events, and docs.
+- If renaming, update all touched references immediately to prevent dual terminology.
+
+## Runtime Reliability
+
+- New/edited runtime modules must be safe for reload cycles (clean listener lifecycle, no duplicate registration).
+- State-changing interactions must persist correctly and trigger save/dirty intent.
+- Expensive startup paths should be warmed up intentionally to reduce first-use hitches.
+
+## Platform and Compliance Guardrails
+
+- Web-first implementation; avoid engine pivots unless explicitly approved.
+- Respect platform Terms of Service. No unauthorized scraping or invasive automation.
+- Prefer official APIs, user-consented integrations, and transparent data handling.
+
+## Documentation Sync (Required)
+
+When behavior changes, update docs in the same session:
+
+1. Update the canonical guideline/reference first.
+2. Update any rule/docs that summarize that behavior.
+3. Remove stale terminology and contradictory instructions.

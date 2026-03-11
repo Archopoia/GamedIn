@@ -1,0 +1,89 @@
+.app-shell {
+  margin: 0 auto;
+  max-width: 980px;
+  padding: 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.subtitle {
+  margin-top: 0.3rem;
+  color: #94ac9d;
+}
+
+.panel {
+  border: 1px solid #2f5345;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #11251e;
+}
+
+.metrics {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+}
+
+input,
+select,
+button {
+  border-radius: 8px;
+  border: 1px solid #345f4f;
+  background: #1c382f;
+  color: #e8fff2;
+  padding: 0.5rem 0.6rem;
+}
+
+button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  border-color: #6ed6a3;
+}
+
+.progress-track {
+  background: #173227;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 10px;
+}
+
+.progress-track span {
+  display: block;
+  height: 100%;
+  background: #6ed6a3;
+}
+
+.status {
+  color: #cfffe3;
+}
+
+.game-canvas {
+  min-height: 180px;
+}
+
+@media (max-width: 760px) {
+  .metrics,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
