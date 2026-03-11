@@ -17,8 +17,12 @@
 }
 
 .gamedin-widget-embedded {
-  padding: 240px 0 0 0;
+  padding: 0;
   background: transparent;
+}
+
+.gamedin-widget-popup-open {
+  padding-top: 240px;
 }
 
 .gamedin-widget-embedded .gamedin-widget-inner {

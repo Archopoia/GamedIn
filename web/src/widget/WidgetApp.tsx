@@ -3,7 +3,7 @@
  * Stats bar, pasture, Profile, Shop, Stats - all accessible.
  */
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { applicationInputSchema, profileSchema } from '../domain/validation'
 import {
@@ -136,6 +136,22 @@ export function WidgetApp() {
     if (activeTab === 'stats') fetchActivity()
   }, [activeTab, fetchActivity])
 
+  const sendResize = useCallback((h: number) => {
+    try {
+      window.parent?.postMessage?.({ type: 'GAMEDIN_WIDGET_RESIZE', height: h }, '*')
+    } catch {
+      /* cross-origin */
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    sendResize(activeTab ? 420 : 180)
+  }, [activeTab, sendResize])
+
+  const onTabMouseDown = useCallback(() => {
+    if (!activeTab) sendResize(420)
+  }, [activeTab, sendResize])
+
 
 
   const handleProfileSave = (e: FormEvent<HTMLFormElement>) => {
@@ -196,7 +212,7 @@ export function WidgetApp() {
   const recent = [...activity].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 4)
 
   return (
-    <div className="gamedin-widget gamedin-widget-embedded">
+    <div className={`gamedin-widget gamedin-widget-embedded ${activeTab ? 'gamedin-widget-popup-open' : ''}`}>
       <div className="gamedin-widget-inner">
       <div className="gamedin-widget-bar-wrap">
       {activeTab && (
@@ -270,6 +286,7 @@ export function WidgetApp() {
               key={tab}
               type="button"
               className={`gamedin-widget-tab ${activeTab === tab ? 'active' : ''}`}
+              onMouseDown={onTabMouseDown}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
             >
               {tab}
