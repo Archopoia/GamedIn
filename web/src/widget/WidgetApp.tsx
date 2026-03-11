@@ -3,7 +3,7 @@
  * Stats bar, pasture, Profile, Shop, Stats - all accessible.
  */
 
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { applicationInputSchema, profileSchema } from '../domain/validation'
 import {
@@ -136,21 +136,15 @@ export function WidgetApp() {
     if (activeTab === 'stats') fetchActivity()
   }, [activeTab, fetchActivity])
 
-  const sendResize = useCallback((height: number) => {
+  useEffect(() => {
     try {
-      window.parent?.postMessage?.({ type: 'GAMEDIN_WIDGET_RESIZE', height }, '*')
+      const h = activeTab ? 420 : 180
+      window.parent?.postMessage?.({ type: 'GAMEDIN_WIDGET_RESIZE', height: h }, '*')
     } catch {
       /* cross-origin */
     }
-  }, [])
+  }, [activeTab])
 
-  useLayoutEffect(() => {
-    sendResize(activeTab ? 420 : 180)
-  }, [activeTab, sendResize])
-
-  const onTabMouseDown = useCallback(() => {
-    sendResize(420)
-  }, [sendResize])
 
   const handleProfileSave = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -284,7 +278,6 @@ export function WidgetApp() {
               key={tab}
               type="button"
               className={`gamedin-widget-tab ${activeTab === tab ? 'active' : ''}`}
-              onMouseDown={onTabMouseDown}
               onClick={() => setActiveTab(activeTab === tab ? null : tab)}
             >
               {tab}

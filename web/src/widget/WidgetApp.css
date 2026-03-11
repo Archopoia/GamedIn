@@ -216,6 +216,7 @@
 }
 
 .gamedin-widget-pasture-wrap {
+  position: relative;
   flex: 1;
   min-height: 140px;
   width: 100%;

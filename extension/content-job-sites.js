@@ -59,7 +59,7 @@
             wrap.style.height = data.height + 'px'
           }
         } catch (_) {
-          /* ignore malformed messages from page scripts */
+          /* ignore */
         }
       })
     } catch (err) {
