@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { compliancePolicy } from './compliance/policy'
 import { DevPanel } from './dev/DevPanel'
@@ -16,7 +16,7 @@ import {
 } from './state/gameState'
 import { loadState, saveState } from './state/saveSync'
 
-type TabId = 'apply' | 'profile' | 'shop' | 'dev'
+type TabId = 'extension' | 'profile' | 'shop' | 'dev'
 
 function App() {
   const [state, setState] = useState(() => {
@@ -25,23 +25,60 @@ function App() {
     }
     return loadState()
   })
-  const [activeTab, setActiveTab] = useState<TabId>('apply')
+  const [activeTab, setActiveTab] = useState<TabId>('extension')
   const [profileInput, setProfileInput] = useState({
     displayName: state.profile.displayName,
     preferredRoles: state.profile.preferredRoles.join(', '),
     dailyApplyGoal: state.profile.dailyApplyGoal.toString(),
-  })
-  const [applyInput, setApplyInput] = useState({
-    title: '',
-    company: '',
-    source: 'linkedin',
-    qualityScore: '3',
   })
   const [message, setMessage] = useState('Welcome to your cozy application loop.')
   const [capInput, setCapInput] = useState(state.engagement.dailyRewardCap.toString())
 
   useEffect(() => {
     initAnalytics()
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log('[GamedIn App] Dispatching gamedin-extension-ready')
+      window.dispatchEvent(new CustomEvent('gamedin-extension-ready'))
+    }
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent<{ title: string; company: string; source: string }>
+      const { title, company, source } = ev.detail || {}
+      console.log('[GamedIn App] Received gamedin-apply-logged', { title, company, source })
+      const parsed = applicationInputSchema.safeParse({
+        title: title?.trim() || 'Unknown Role',
+        company: company?.trim() || 'Unknown Company',
+        source: source || 'linkedin',
+        qualityScore: 3,
+      })
+      if (!parsed.success) {
+        console.log('[GamedIn App] Validation failed', parsed.error?.issues)
+        return
+      }
+      console.log('[GamedIn App] Applying reward for', parsed.data)
+      setState((current) => {
+        const result = applyLoggedCommand(current, {
+          ...parsed.data,
+          qualityScore: 3 as 1 | 2 | 3 | 4 | 5,
+        })
+        const telemetry = result.events.map((domainEvent) =>
+          toTelemetryEvent(domainEvent, result.state),
+        )
+        return {
+          ...result.state,
+          telemetryQueue: [...result.state.telemetryQueue, ...telemetry].slice(-100),
+        }
+      })
+      setMessage('Application logged from LinkedIn! Rewards granted.')
+      console.log('[GamedIn App] Reward applied successfully')
+    }
+    window.addEventListener('gamedin-apply-logged', handler)
+    return () => window.removeEventListener('gamedin-apply-logged', handler)
   }, [])
 
   useEffect(() => {
@@ -73,78 +110,6 @@ function App() {
     setMessage(`Profile saved. Daily goal set to ${parsed.data.dailyApplyGoal}.`)
   }
 
-  const handleApplicationSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const parsed = applicationInputSchema.safeParse({
-      title: applyInput.title,
-      company: applyInput.company,
-      source: applyInput.source,
-      qualityScore: Number(applyInput.qualityScore),
-    })
-
-    if (!parsed.success) {
-      setMessage('Application validation failed. Please complete all fields.')
-      return
-    }
-
-    setState((current) => {
-      const result = applyLoggedCommand(current, {
-        ...parsed.data,
-        qualityScore: parsed.data.qualityScore as 1 | 2 | 3 | 4 | 5,
-      })
-      const telemetry = result.events.map((domainEvent) =>
-        toTelemetryEvent(domainEvent, result.state),
-      )
-      return {
-        ...result.state,
-        telemetryQueue: [...result.state.telemetryQueue, ...telemetry].slice(-100),
-      }
-    })
-    setApplyInput({
-      title: '',
-      company: '',
-      source: applyInput.source,
-      qualityScore: applyInput.qualityScore,
-    })
-    setMessage('Application logged. Rewards granted.')
-  }
-
-  const handleDropFromCard = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      const raw = e.dataTransfer.getData('application/json')
-      if (!raw) return
-      try {
-        const data = JSON.parse(raw) as {
-          title: string
-          company: string
-          source: string
-          qualityScore: number
-        }
-        const parsed = applicationInputSchema.safeParse(data)
-        if (!parsed.success) return
-        setState((current) => {
-          const result = applyLoggedCommand(current, {
-            ...parsed.data,
-            qualityScore: parsed.data.qualityScore as 1 | 2 | 3 | 4 | 5,
-          })
-          const telemetry = result.events.map((domainEvent) =>
-            toTelemetryEvent(domainEvent, result.state),
-          )
-          return {
-            ...result.state,
-            telemetryQueue: [...result.state.telemetryQueue, ...telemetry].slice(-100),
-          }
-        })
-        setApplyInput({ title: '', company: '', source: data.source, qualityScore: String(data.qualityScore) })
-        setMessage('Application logged! New critter joined the pasture.')
-      } catch {
-        // ignore
-      }
-    },
-    [setState, setMessage, setApplyInput],
-  )
-
   const handleUpgradePurchase = () => {
     setState((current) => {
       const result = purchaseBathUpgrade(current)
@@ -162,14 +127,14 @@ function App() {
   }
 
   const tabs: { id: TabId; label: string }[] = [
-    { id: 'apply', label: 'Log Apply' },
+    { id: 'extension', label: 'Extension' },
     { id: 'profile', label: 'Profile' },
     { id: 'shop', label: 'Shop' },
     ...(isDevMode ? [{ id: 'dev' as TabId, label: 'Dev' }] : []),
   ]
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" suppressHydrationWarning>
       <header className="app-header">
         <div className="header-left">
           <h1>GamedIn</h1>
@@ -208,80 +173,20 @@ function App() {
           </nav>
 
           <div className="tab-content">
-            {activeTab === 'apply' && (
-              <form className="panel compact-form" onSubmit={handleApplicationSubmit}>
-                <h2>Log Application</h2>
-                <p className="apply-hint">Fill the form and click Submit, or drag the card to the pasture below.</p>
-                <div className="form-row">
-                  <label>
-                    Role
-                    <input
-                      value={applyInput.title}
-                      onChange={(e) => setApplyInput((c) => ({ ...c, title: e.target.value }))}
-                      placeholder="e.g. Frontend Engineer"
-                    />
-                  </label>
-                  <label>
-                    Company
-                    <input
-                      value={applyInput.company}
-                      onChange={(e) => setApplyInput((c) => ({ ...c, company: e.target.value }))}
-                      placeholder="e.g. Acme Corp"
-                    />
-                  </label>
-                </div>
-                <div className="form-row">
-                  <label>
-                    Source
-                    <select
-                      value={applyInput.source}
-                      onChange={(e) =>
-                        setApplyInput((c) => ({ ...c, source: e.target.value }))
-                      }
-                    >
-                      <option value="linkedin">LinkedIn</option>
-                      <option value="indeed">Indeed</option>
-                      <option value="glassdoor">Glassdoor</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </label>
-                  <label>
-                    Fit (1–5)
-                    <input
-                      type="number"
-                      min={1}
-                      max={5}
-                      value={applyInput.qualityScore}
-                      onChange={(e) =>
-                        setApplyInput((c) => ({ ...c, qualityScore: e.target.value }))
-                      }
-                    />
-                  </label>
-                  <button type="submit">Submit</button>
-                </div>
-                {applyInput.title.trim() && applyInput.company.trim() && (
-                  <div
-                    className="job-card-draggable"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData(
-                        'application/json',
-                        JSON.stringify({
-                          title: applyInput.title,
-                          company: applyInput.company,
-                          source: applyInput.source,
-                          qualityScore: Number(applyInput.qualityScore),
-                        }),
-                      )
-                      e.dataTransfer.effectAllowed = 'move'
-                    }}
-                  >
-                    <span className="job-card-role">{applyInput.title}</span>
-                    <span className="job-card-company">{applyInput.company}</span>
-                    <span className="job-card-hint">Drag to pasture →</span>
-                  </div>
-                )}
-              </form>
+            {activeTab === 'extension' && (
+              <div className="panel">
+                <h2>Extension</h2>
+                <p className="apply-hint">
+                  Install the GamedIn Chrome extension for full automation. When you Easy Apply on LinkedIn, it auto-detects success and grants rewards—zero extra effort.
+                </p>
+                <ol className="extension-steps">
+                  <li>Open <code>chrome://extensions/</code></li>
+                  <li>Enable Developer mode</li>
+                  <li>Click Load unpacked</li>
+                  <li>Select the <code>extension</code> folder in this repo</li>
+                </ol>
+                <p>Keep this tab open and apply on LinkedIn. Rewards appear automatically.</p>
+              </div>
             )}
 
             {activeTab === 'profile' && (
@@ -370,11 +275,7 @@ function App() {
         </section>
       </div>
 
-      <footer
-        className="pasture-footer"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={handleDropFromCard}
-      >
+      <footer className="pasture-footer">
         <Pasture state={state} setState={setState} setMessage={setMessage} />
       </footer>
     </main>

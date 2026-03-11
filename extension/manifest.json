@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "GamedIn",
+  "version": "1.0.0",
+  "description": "Zero-effort job application tracking for GamedIn. Auto-detects LinkedIn Easy Apply success and grants rewards.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://localhost/*",
+    "https://127.0.0.1/*",
+    "*://*.vercel.app/*",
+    "*://*.netlify.app/*",
+    "*://*.gamedin.app/*",
+    "*://gamedin.app/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.linkedin.com/*"],
+      "js": ["content-linkedin.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://localhost/*",
+        "https://127.0.0.1/*",
+        "*://*.vercel.app/*",
+        "*://*.netlify.app/*",
+        "*://*.gamedin.app/*",
+        "*://gamedin.app/*"
+      ],
+      "js": ["content-gamedin.js"],
+      "run_at": "document_end"
+    }
+  ]
+}

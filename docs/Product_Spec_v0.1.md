@@ -2,33 +2,33 @@
 
 ## Core Loop
 
-1. User applies to a job (LinkedIn, Indeed, etc.) — **or** extension/bookmarklet auto-captures or one-click logs.
-2. System validates the input and emits `application_logged`.
-3. Reward engine grants Zen currency and guest growth, then emits `reward_granted`.
-4. Simulation updates progression and visuals.
-5. State persists locally and can later sync to backend.
+1. User applies to a job on LinkedIn (Easy Apply).
+2. Extension auto-detects success and sends job title/company to the game.
+3. System validates the input and emits `application_logged`.
+4. Reward engine grants Zen currency and guest growth, then emits `reward_granted`.
+5. Simulation updates progression and visuals.
+6. State persists locally and can later sync to backend.
 
 ## Goals
 
 - Make job search habit-forming with immediate positive feedback.
-- **Minimize player effort:** Hook to real application activity; extension/bookmarklet for zero or one-click capture (roadmap).
+- **Full automation:** Zero extra effort. Extension is the only input path.
 - Preserve deterministic state and simple balancing knobs.
 
 ## Non-Goals (v0.1)
 
+- No manual form or drag-to-pasture.
 - No automated application submission (we never submit for the user).
 - No bulk scraping or data harvesting for resale.
 - No advanced economy complexity beyond one upgrade track.
 
-## Integration Roadmap
+## Integration
 
-- **MVP:** Manual form (fastest to ship).
-- **Next:** Extension or bookmarklet — one-click capture of job title/company from current page.
-- **Later:** Passive detection — auto-detect apply confirmation, zero extra effort.
+- **Extension only:** Chrome extension detects LinkedIn Easy Apply success and auto-captures job title/company. No manual logging.
 
 ## Events Dictionary
 
-- `application_logged`: user submitted an apply log (manual, one-click, or auto-captured).
+- `application_logged`: extension auto-captured apply from LinkedIn.
 - `reward_granted`: Zen and guest changes applied.
 - `upgrade_purchased`: user bought bath upgrade.
 

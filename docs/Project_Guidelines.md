@@ -87,17 +87,12 @@ GamedIn aims to hook directly into job-application activity (searching, parsing,
 
 ## 5. Phased Roadmap
 
-**Phase 1 — MVP (1–4 weeks):**
 - Manual form for applies (fastest to ship).
 - OAuth for profile import.
 - Share progress via LinkedIn API for virality.
-
-**Phase 2 — Low-Friction Capture (1–2 months):**
 - Chrome extension: one-click capture of job title/company from current page.
 - Or bookmarklet: same capture, one click.
 - Game receives data, grants rewards without form fill.
-
-**Phase 3 — Passive Detection (2–3 months):**
 - Extension auto-detects apply confirmation.
 - Zero extra effort: apply on LinkedIn → reward granted automatically.
 

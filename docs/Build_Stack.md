@@ -13,6 +13,5 @@ This file confirms the implementation stack selected for the initial GamedIn bui
 
 ## Integration Strategy
 
-- **MVP:** Manual self-reporting for applications (fastest path to ship).
-- **Roadmap:** Chrome extension or bookmarklet for one-click capture of job title/company from the current page—aligned with proven market patterns (Huntr, LinkedIn Job Application Tracker, JobPilot).
-- **Target:** Passive detection for zero extra effort; extension auto-detects apply confirmation and grants rewards.
+- **Manual:** Form and drag-to-pasture for non-LinkedIn or fallback.
+- **Extension:** Chrome extension in `extension/`—passive detection of LinkedIn Easy Apply success, zero extra effort. Load unpacked from `chrome://extensions/`.

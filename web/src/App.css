@@ -180,35 +180,22 @@
   margin: 0 0 0.5rem;
 }
 
-.job-card-draggable {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: #1c382f;
-  border: 1px dashed #4a7a5a;
-  border-radius: 8px;
-  cursor: grab;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.job-card-draggable:active {
-  cursor: grabbing;
-}
-
-.job-card-role {
-  font-weight: 600;
-  color: #6ed6a3;
-}
-
-.job-card-company {
+.extension-steps {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
   font-size: 0.85rem;
   color: #94ac9d;
 }
 
-.job-card-hint {
-  font-size: 0.7rem;
-  color: #5a7a6a;
+.extension-steps li {
+  margin-bottom: 0.25rem;
+}
+
+.extension-steps code {
+  background: #1c382f;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
 }
 
 .compact-form .form-row,
