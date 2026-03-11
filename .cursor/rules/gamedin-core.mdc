@@ -4,11 +4,12 @@ alwaysApply: true
 ---
 # GamedIn Core Rule (AI-First Vibecoding)
 
-Build fast with AI, but keep the codebase clean, typed, and legally safe.
+Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizing.
 
 ## Product Intent
 
 - GamedIn is a cozy, rewarding layer on top of real job-application effort.
+- **Minimize player effort:** Hook to LinkedIn (and other platforms) application activity; extension/bookmarklet for zero or one-click capture is the target.
 - Prioritize habit-building loops, immediate feedback, and low-friction UX.
 - Optimize for fast iteration with AI while preserving long-term maintainability.
 
@@ -45,11 +46,13 @@ Build fast with AI, but keep the codebase clean, typed, and legally safe.
 - State-changing interactions must persist correctly and trigger save/dirty intent.
 - Expensive startup paths should be warmed up intentionally to reduce first-use hitches.
 
-## Platform and Compliance Guardrails
+## Platform and Integration
 
 - Web-first implementation; avoid engine pivots unless explicitly approved.
-- Respect platform Terms of Service. No unauthorized scraping or invasive automation.
-- Prefer official APIs, user-consented integrations, and transparent data handling.
+- **Opportunity-maximizing:** Align with proven market patterns (Huntr, LinkedIn Job Application Tracker, JobPilot)—extension auto-capture, one-click bookmarklet, passive detection.
+- No automated application submission (we never submit for the user).
+- User-consented integrations; transparent data handling.
+- Prefer official APIs where available (e.g., Indeed).
 
 ## Documentation Sync (Required)
 
