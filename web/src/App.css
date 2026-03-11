@@ -59,32 +59,52 @@
 .app-body {
   flex: 1;
   display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
-.game-aside {
+.daily-progress-bar {
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem;
-  background: #0a1612;
-  border-right: 1px solid #2f5345;
-}
-
-.game-canvas {
-  flex-shrink: 0;
-}
-
-.daily-progress {
+  padding: 0.25rem 0.75rem;
   font-size: 0.8rem;
   color: #94ac9d;
 }
 
-.daily-progress .progress-track {
-  margin-top: 0.25rem;
+.daily-progress-bar .progress-track {
+  flex: 1;
+  max-width: 120px;
   height: 6px;
+}
+
+.pasture-footer {
+  flex-shrink: 0;
+  background: linear-gradient(to top, #1a2e24, #0d1f18);
+  border-top: 2px solid #2d5a27;
+}
+
+.pasture-overlay {
+  width: 100%;
+  height: 140px;
+  position: relative;
+}
+
+.pasture-canvas {
+  width: 100%;
+  height: 140px;
+}
+
+.pasture-hint {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #5a7a6a;
+  pointer-events: none;
 }
 
 .content-area {
@@ -152,6 +172,43 @@
   border: none;
   border-top: 1px solid #2f5345;
   margin: 0.75rem 0;
+}
+
+.apply-hint {
+  font-size: 0.75rem;
+  color: #7a9a8a;
+  margin: 0 0 0.5rem;
+}
+
+.job-card-draggable {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #1c382f;
+  border: 1px dashed #4a7a5a;
+  border-radius: 8px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.job-card-draggable:active {
+  cursor: grabbing;
+}
+
+.job-card-role {
+  font-weight: 600;
+  color: #6ed6a3;
+}
+
+.job-card-company {
+  font-size: 0.85rem;
+  color: #94ac9d;
+}
+
+.job-card-hint {
+  font-size: 0.7rem;
+  color: #5a7a6a;
 }
 
 .compact-form .form-row,

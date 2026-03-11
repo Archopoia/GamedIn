@@ -1,4 +1,5 @@
 import type { SaveStateV1 } from '../domain/types'
+import { getOrCreatePasture } from '../domain/pasture'
 import { createInitialState } from './gameState'
 
 const STORAGE_KEY = 'gamedin.save.v1'
@@ -20,7 +21,11 @@ export function restoreState(serialized: string): SaveStateV1 {
   if (!isSaveState(parsed)) {
     return createInitialState()
   }
-  return parsed
+  const state = parsed as SaveStateV1
+  if (!state.pasture || state.pasture.animals.length === 0) {
+    return { ...state, pasture: getOrCreatePasture(state) }
+  }
+  return state
 }
 
 export function loadState(): SaveStateV1 {

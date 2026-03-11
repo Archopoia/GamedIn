@@ -1,5 +1,38 @@
 export type ApplicationSource = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
 
+export type CritterType =
+  | 'rabbit'
+  | 'bird'
+  | 'cat'
+  | 'dog'
+  | 'fox'
+  | 'owl'
+  | 'hedgehog'
+
+export interface PastureAnimal {
+  id: string
+  type: CritterType
+  mood: number
+  lastFedAt: string | null
+  lastPettedAt: string | null
+  x: number
+  facing: 1 | -1
+  coinAccumulated: number
+}
+
+export interface PastureDropping {
+  id: string
+  x: number
+  animalId: string
+}
+
+export interface PastureCoin {
+  id: string
+  x: number
+  amount: number
+  animalId: string
+}
+
 export interface Profile {
   displayName: string
   preferredRoles: string[]
@@ -44,6 +77,14 @@ export interface UpgradeState {
   bathUpgradeCost: number
 }
 
+export interface PastureState {
+  animals: PastureAnimal[]
+  droppings: PastureDropping[]
+  coins: PastureCoin[]
+  unlockedCritters: CritterType[]
+  pastureLevel: number
+}
+
 export interface TelemetryEvent {
   name: string
   timestamp: string
@@ -59,5 +100,6 @@ export interface SaveStateV1 {
   progression: ProgressionState
   engagement: EngagementState
   upgrades: UpgradeState
+  pasture?: PastureState
   telemetryQueue: TelemetryEvent[]
 }

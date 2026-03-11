@@ -1,11 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { compliancePolicy } from './compliance/policy'
 import { DevPanel } from './dev/DevPanel'
 import { isDevMode } from './lib/devMode'
 import { toTelemetryEvent } from './domain/events'
 import { applicationInputSchema, profileSchema } from './domain/validation'
-import { GameCanvas } from './game/GameCanvas'
+import { Pasture } from './game/Pasture'
 import { initAnalytics, trackEvent } from './lib/analytics'
 import {
   applyLoggedCommand,
@@ -109,6 +109,42 @@ function App() {
     setMessage('Application logged. Rewards granted.')
   }
 
+  const handleDropFromCard = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      const raw = e.dataTransfer.getData('application/json')
+      if (!raw) return
+      try {
+        const data = JSON.parse(raw) as {
+          title: string
+          company: string
+          source: string
+          qualityScore: number
+        }
+        const parsed = applicationInputSchema.safeParse(data)
+        if (!parsed.success) return
+        setState((current) => {
+          const result = applyLoggedCommand(current, {
+            ...parsed.data,
+            qualityScore: parsed.data.qualityScore as 1 | 2 | 3 | 4 | 5,
+          })
+          const telemetry = result.events.map((domainEvent) =>
+            toTelemetryEvent(domainEvent, result.state),
+          )
+          return {
+            ...result.state,
+            telemetryQueue: [...result.state.telemetryQueue, ...telemetry].slice(-100),
+          }
+        })
+        setApplyInput({ title: '', company: '', source: data.source, qualityScore: String(data.qualityScore) })
+        setMessage('Application logged! New critter joined the pasture.')
+      } catch {
+        // ignore
+      }
+    },
+    [setState, setMessage, setApplyInput],
+  )
+
   const handleUpgradePurchase = () => {
     setState((current) => {
       const result = purchaseBathUpgrade(current)
@@ -151,17 +187,13 @@ function App() {
       </header>
 
       <div className="app-body">
-        <aside className="game-aside">
-          <GameCanvas guests={state.guests.active} />
-          <div className="daily-progress">
+        <section className="content-area">
+          <div className="daily-progress-bar">
             <span>Today: {state.engagement.appliesToday}/{state.profile.dailyApplyGoal}</span>
             <div className="progress-track" role="progressbar" aria-valuenow={todayProgress}>
               <span style={{ width: `${todayProgress}%` }} />
             </div>
           </div>
-        </aside>
-
-        <section className="content-area">
           <nav className="tabs">
             {tabs.map((tab) => (
               <button
@@ -179,6 +211,7 @@ function App() {
             {activeTab === 'apply' && (
               <form className="panel compact-form" onSubmit={handleApplicationSubmit}>
                 <h2>Log Application</h2>
+                <p className="apply-hint">Fill the form and click Submit, or drag the card to the pasture below.</p>
                 <div className="form-row">
                   <label>
                     Role
@@ -224,8 +257,30 @@ function App() {
                       }
                     />
                   </label>
-                  <button type="submit">I applied</button>
+                  <button type="submit">Submit</button>
                 </div>
+                {applyInput.title.trim() && applyInput.company.trim() && (
+                  <div
+                    className="job-card-draggable"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        'application/json',
+                        JSON.stringify({
+                          title: applyInput.title,
+                          company: applyInput.company,
+                          source: applyInput.source,
+                          qualityScore: Number(applyInput.qualityScore),
+                        }),
+                      )
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                  >
+                    <span className="job-card-role">{applyInput.title}</span>
+                    <span className="job-card-company">{applyInput.company}</span>
+                    <span className="job-card-hint">Drag to pasture →</span>
+                  </div>
+                )}
               </form>
             )}
 
@@ -314,6 +369,14 @@ function App() {
           </div>
         </section>
       </div>
+
+      <footer
+        className="pasture-footer"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDropFromCard}
+      >
+        <Pasture state={state} setState={setState} setMessage={setMessage} />
+      </footer>
     </main>
   )
 }
