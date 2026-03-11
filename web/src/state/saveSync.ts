@@ -38,3 +38,7 @@ export function loadState(): SaveStateV1 {
 export function saveState(state: SaveStateV1): void {
   localStorage.setItem(STORAGE_KEY, serializeState(state))
 }
+
+export function clearState(): void {
+  localStorage.removeItem(STORAGE_KEY)
+}

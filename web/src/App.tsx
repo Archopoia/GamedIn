@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { compliancePolicy } from './compliance/policy'
+import { DevPanel } from './dev/DevPanel'
+import { isDevMode } from './lib/devMode'
 import { toTelemetryEvent } from './domain/events'
 import { applicationInputSchema, profileSchema } from './domain/validation'
 import { GameCanvas } from './game/GameCanvas'
@@ -14,6 +16,8 @@ import {
 } from './state/gameState'
 import { loadState, saveState } from './state/saveSync'
 
+type TabId = 'apply' | 'profile' | 'shop' | 'dev'
+
 function App() {
   const [state, setState] = useState(() => {
     if (typeof window === 'undefined') {
@@ -21,6 +25,7 @@ function App() {
     }
     return loadState()
   })
+  const [activeTab, setActiveTab] = useState<TabId>('apply')
   const [profileInput, setProfileInput] = useState({
     displayName: state.profile.displayName,
     preferredRoles: state.profile.preferredRoles.join(', '),
@@ -120,173 +125,194 @@ function App() {
     })
   }
 
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'apply', label: 'Log Apply' },
+    { id: 'profile', label: 'Profile' },
+    { id: 'shop', label: 'Shop' },
+    ...(isDevMode ? [{ id: 'dev' as TabId, label: 'Dev' }] : []),
+  ]
+
   return (
     <main className="app-shell">
-      <header>
-        <h1>GamedIn MVP</h1>
-        <p className="subtitle">{compliancePolicy.statement}</p>
+      <header className="app-header">
+        <div className="header-left">
+          <h1>GamedIn</h1>
+          <span className="dev-badge">{isDevMode && '[Dev]'}</span>
+        </div>
+        <div className="header-metrics">
+          <span title="Zen currency">Zen {state.economy.zen}</span>
+          <span title="Active guests">Guests {state.guests.active}</span>
+          <span title="Level">Lv {state.progression.level}</span>
+          <span title="Streak">Streak {state.engagement.streakDays}d</span>
+        </div>
+        <div className="header-status" title={compliancePolicy.statement}>
+          {message}
+        </div>
       </header>
 
-      <section className="panel metrics">
-        <div>
-          <h2>Progress</h2>
-          <p>Zen: {state.economy.zen}</p>
-          <p>Guests: {state.guests.active}</p>
-          <p>Level: {state.progression.level}</p>
-          <p>Streak: {state.engagement.streakDays} days</p>
-        </div>
-        <div>
-          <h2>Daily Goal</h2>
-          <p>{state.engagement.appliesToday} applications logged today</p>
-          <div className="progress-track" role="progressbar" aria-valuenow={todayProgress}>
-            <span style={{ width: `${todayProgress}%` }} />
+      <div className="app-body">
+        <aside className="game-aside">
+          <GameCanvas guests={state.guests.active} />
+          <div className="daily-progress">
+            <span>Today: {state.engagement.appliesToday}/{state.profile.dailyApplyGoal}</span>
+            <div className="progress-track" role="progressbar" aria-valuenow={todayProgress}>
+              <span style={{ width: `${todayProgress}%` }} />
+            </div>
           </div>
-          <p>{todayProgress}% complete</p>
-        </div>
-      </section>
+        </aside>
 
-      <section className="panel">
-        <GameCanvas guests={state.guests.active} />
-      </section>
+        <section className="content-area">
+          <nav className="tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={activeTab === tab.id ? 'tab active' : 'tab'}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
 
-      <section className="panel form-grid">
-        <form onSubmit={handleProfileSave}>
-          <h2>Onboarding</h2>
-          <label>
-            Display name
-            <input
-              value={profileInput.displayName}
-              onChange={(event) =>
-                setProfileInput((current) => ({
-                  ...current,
-                  displayName: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Preferred roles (comma separated)
-            <input
-              value={profileInput.preferredRoles}
-              onChange={(event) =>
-                setProfileInput((current) => ({
-                  ...current,
-                  preferredRoles: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Daily apply goal
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={profileInput.dailyApplyGoal}
-              onChange={(event) =>
-                setProfileInput((current) => ({
-                  ...current,
-                  dailyApplyGoal: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <button type="submit">Save profile</button>
-        </form>
+          <div className="tab-content">
+            {activeTab === 'apply' && (
+              <form className="panel compact-form" onSubmit={handleApplicationSubmit}>
+                <h2>Log Application</h2>
+                <div className="form-row">
+                  <label>
+                    Role
+                    <input
+                      value={applyInput.title}
+                      onChange={(e) => setApplyInput((c) => ({ ...c, title: e.target.value }))}
+                      placeholder="e.g. Frontend Engineer"
+                    />
+                  </label>
+                  <label>
+                    Company
+                    <input
+                      value={applyInput.company}
+                      onChange={(e) => setApplyInput((c) => ({ ...c, company: e.target.value }))}
+                      placeholder="e.g. Acme Corp"
+                    />
+                  </label>
+                </div>
+                <div className="form-row">
+                  <label>
+                    Source
+                    <select
+                      value={applyInput.source}
+                      onChange={(e) =>
+                        setApplyInput((c) => ({ ...c, source: e.target.value }))
+                      }
+                    >
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="indeed">Indeed</option>
+                      <option value="glassdoor">Glassdoor</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label>
+                    Fit (1–5)
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={applyInput.qualityScore}
+                      onChange={(e) =>
+                        setApplyInput((c) => ({ ...c, qualityScore: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <button type="submit">I applied</button>
+                </div>
+              </form>
+            )}
 
-        <form onSubmit={handleApplicationSubmit}>
-          <h2>Log Application</h2>
-          <label>
-            Role title
-            <input
-              value={applyInput.title}
-              onChange={(event) =>
-                setApplyInput((current) => ({ ...current, title: event.target.value }))
-              }
-            />
-          </label>
-          <label>
-            Company
-            <input
-              value={applyInput.company}
-              onChange={(event) =>
-                setApplyInput((current) => ({
-                  ...current,
-                  company: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <label>
-            Source
-            <select
-              value={applyInput.source}
-              onChange={(event) =>
-                setApplyInput((current) => ({
-                  ...current,
-                  source: event.target.value,
-                }))
-              }
-            >
-              <option value="linkedin">LinkedIn</option>
-              <option value="indeed">Indeed</option>
-              <option value="glassdoor">Glassdoor</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label>
-            Quality score (1-5)
-            <input
-              type="number"
-              min={1}
-              max={5}
-              value={applyInput.qualityScore}
-              onChange={(event) =>
-                setApplyInput((current) => ({
-                  ...current,
-                  qualityScore: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <button type="submit">I applied</button>
-        </form>
-      </section>
+            {activeTab === 'profile' && (
+              <div className="panel">
+                <form onSubmit={handleProfileSave}>
+                  <h2>Profile</h2>
+                  <div className="form-row">
+                    <label>
+                      Name
+                      <input
+                        value={profileInput.displayName}
+                        onChange={(e) =>
+                          setProfileInput((c) => ({ ...c, displayName: e.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      Daily goal
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={profileInput.dailyApplyGoal}
+                        onChange={(e) =>
+                          setProfileInput((c) => ({ ...c, dailyApplyGoal: e.target.value }))
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Roles (comma)
+                    <input
+                      value={profileInput.preferredRoles}
+                      onChange={(e) =>
+                        setProfileInput((c) => ({ ...c, preferredRoles: e.target.value }))
+                      }
+                    />
+                  </label>
+                  <button type="submit">Save profile</button>
+                </form>
+                <hr className="panel-divider" />
+                <h3>Tuning</h3>
+                <div className="form-row">
+                  <label>
+                    Daily cap
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={capInput}
+                      onChange={(e) => setCapInput(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setState((c) => setDailyRewardCap(c, Number(capInput)))
+                      setMessage('Daily reward cap updated.')
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
 
-      <section className="panel">
-        <h2>Upgrade Shop</h2>
-        <p>Bath level: {state.upgrades.bathLevel}</p>
-        <p>Next upgrade cost: {state.upgrades.bathUpgradeCost} Zen</p>
-        <button type="button" onClick={handleUpgradePurchase}>
-          Buy bath upgrade
-        </button>
-      </section>
+            {activeTab === 'shop' && (
+              <div className="panel">
+                <h2>Upgrade Shop</h2>
+                <div className="shop-row">
+                  <div>
+                    <p>Bath level: {state.upgrades.bathLevel}</p>
+                    <p>Next: {state.upgrades.bathUpgradeCost} Zen</p>
+                  </div>
+                  <button type="button" onClick={handleUpgradePurchase}>
+                    Buy upgrade
+                  </button>
+                </div>
+              </div>
+            )}
 
-      <section className="panel">
-        <h2>Tuning Controls</h2>
-        <label>
-          Daily reward cap
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={capInput}
-            onChange={(event) => setCapInput(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            setState((current) => setDailyRewardCap(current, Number(capInput)))
-            setMessage('Daily reward cap updated.')
-          }}
-        >
-          Save tuning
-        </button>
-      </section>
-
-      <div className="panel status">
-        <strong>Status:</strong> {message}
+            {activeTab === 'dev' && isDevMode && (
+              <DevPanel state={state} setState={setState} setMessage={setMessage} />
+            )}
+          </div>
+        </section>
       </div>
     </main>
   )

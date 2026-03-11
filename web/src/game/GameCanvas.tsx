@@ -17,21 +17,21 @@ export function GameCanvas({ guests }: GameCanvasProps) {
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      width: 420,
-      height: 180,
+      width: 300,
+      height: 120,
       parent: rootRef.current,
       transparent: true,
       scene: {
         create() {
-          this.add.rectangle(210, 95, 390, 145, 0x234f3b, 0.8).setStrokeStyle(2, 0x6ed6a3)
-          this.add.text(24, 26, 'GamedIn Onsen', {
+          this.add.rectangle(150, 60, 270, 95, 0x234f3b, 0.8).setStrokeStyle(2, 0x6ed6a3)
+          this.add.text(16, 16, 'GamedIn Onsen', {
             color: '#dfffea',
-            fontSize: '20px',
+            fontSize: '14px',
             fontFamily: 'Arial',
           })
-          textRef.current = this.add.text(24, 66, `Guests relaxing: ${guests}`, {
+          textRef.current = this.add.text(16, 44, `Guests: ${guests}`, {
             color: '#dfffea',
-            fontSize: '17px',
+            fontSize: '13px',
             fontFamily: 'Arial',
           })
         },
