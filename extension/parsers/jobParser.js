@@ -117,10 +117,14 @@
     return Object.keys(result).length ? result : null
   }
 
-  global.GAMEDIN_JOB_PARSER = {
-    detectSite,
-    extractJobInfo,
-    hasApplySuccess,
-    extractFromSuccessContext,
+  try {
+    global.GAMEDIN_JOB_PARSER = {
+      detectSite,
+      extractJobInfo,
+      hasApplySuccess,
+      extractFromSuccessContext,
+    }
+  } catch (_) {
+    /* page may restrict global (e.g. LinkedIn) */
   }
 })(typeof window !== 'undefined' ? window : this)

@@ -6,8 +6,13 @@
 
 (function () {
   const LOG = (...args) => console.log('[GamedIn Job Sites]', ...args)
-  const { detectSite, extractJobInfo, hasApplySuccess, extractFromSuccessContext } =
-    window.GAMEDIN_JOB_PARSER || {}
+  let parser
+  try {
+    parser = (typeof window !== 'undefined' && window.GAMEDIN_JOB_PARSER) || {}
+  } catch (_) {
+    parser = {}
+  }
+  const { detectSite, extractJobInfo, hasApplySuccess, extractFromSuccessContext } = parser
 
   if (!detectSite || !extractJobInfo || !hasApplySuccess) {
     LOG('Job parser not loaded, exiting')
@@ -21,6 +26,52 @@
   }
 
   LOG('Content script loaded', { site: site.id, url: window.location.href })
+
+  function injectWidget() {
+    try {
+      if (document.getElementById('gamedin-widget-container')) return
+      const wrap = document.createElement('div')
+      wrap.id = 'gamedin-widget-container'
+      wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:180px;z-index:2147483647;pointer-events:none;'
+      const iframe = document.createElement('iframe')
+      iframe.id = 'gamedin-widget-iframe'
+      iframe.src = chrome.runtime.getURL('widget/widget.html')
+      iframe.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:100%;border:none;pointer-events:auto;'
+      wrap.appendChild(iframe)
+      document.body.appendChild(wrap)
+
+      let extOrigin = ''
+      try {
+        extOrigin = new URL(chrome.runtime.getURL('')).origin
+      } catch (_) {
+        extOrigin = ''
+      }
+      window.addEventListener('message', (e) => {
+        try {
+          if (extOrigin && e.origin !== extOrigin) return
+          let data
+          try {
+            data = e.data
+          } catch (_) {
+            return
+          }
+          if (data && typeof data === 'object' && data.type === 'GAMEDIN_WIDGET_RESIZE' && typeof data.height === 'number') {
+            wrap.style.height = data.height + 'px'
+          }
+        } catch (_) {
+          /* ignore malformed messages from page scripts */
+        }
+      })
+    } catch (err) {
+      LOG('injectWidget error', err?.message || err)
+    }
+  }
+
+  if (document.body) {
+    injectWidget()
+  } else {
+    document.addEventListener('DOMContentLoaded', injectWidget)
+  }
 
   let lastSentAt = 0
   const DEBOUNCE_MS = 3000

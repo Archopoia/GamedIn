@@ -29,6 +29,25 @@
   "background": {
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["widget/widget.html", "widget/widget.js", "widget/widget-widget.css"],
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.indeed.com/*",
+        "*://*.indeed.co.uk/*",
+        "*://*.indeed.ca/*",
+        "*://au.indeed.com/*",
+        "*://*.glassdoor.com/*",
+        "*://*.glassdoor.co.uk/*",
+        "*://*.greenhouse.io/*",
+        "*://boards.greenhouse.io/*",
+        "*://jobs.greenhouse.io/*",
+        "*://jobs.lever.co/*",
+        "*://*.lever.co/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [

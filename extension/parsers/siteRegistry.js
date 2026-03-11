@@ -244,6 +244,10 @@ const SITES = [
 ]
 
 // Expose for jobParser (loaded after this script)
-if (typeof window !== 'undefined') {
-  window.GAMEDIN_SITES = SITES
+try {
+  if (typeof window !== 'undefined') {
+    window.GAMEDIN_SITES = SITES
+  }
+} catch (_) {
+  /* page may restrict window (e.g. LinkedIn) */
 }

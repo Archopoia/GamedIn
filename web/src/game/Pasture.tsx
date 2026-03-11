@@ -89,6 +89,7 @@ export function Pasture({ state, setState, setMessage }: PastureProps) {
       transparent: true,
       scene: [PastureScene],
       physics: { default: 'arcade' },
+      audio: { noAudio: true },
     }
 
     const game = new Phaser.Game(config)
