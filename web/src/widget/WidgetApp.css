@@ -17,7 +17,7 @@
 }
 
 .gamedin-widget-embedded {
-  padding: 0;
+  padding: 240px 0 0 0;
   background: transparent;
 }
 
@@ -28,10 +28,6 @@
   min-height: 180px;
   background: linear-gradient(to top, #1a2e24, #0d1f18);
   border-top: 2px solid #2d5a27;
-}
-
-.gamedin-widget-popup-open {
-  padding-top: 240px;
 }
 
 .gamedin-widget-bar {

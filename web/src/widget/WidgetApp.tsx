@@ -136,14 +136,6 @@ export function WidgetApp() {
     if (activeTab === 'stats') fetchActivity()
   }, [activeTab, fetchActivity])
 
-  useEffect(() => {
-    try {
-      const h = activeTab ? 420 : 180
-      window.parent?.postMessage?.({ type: 'GAMEDIN_WIDGET_RESIZE', height: h }, '*')
-    } catch {
-      /* cross-origin */
-    }
-  }, [activeTab])
 
 
   const handleProfileSave = (e: FormEvent<HTMLFormElement>) => {
@@ -204,7 +196,7 @@ export function WidgetApp() {
   const recent = [...activity].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 4)
 
   return (
-    <div className={`gamedin-widget gamedin-widget-embedded ${activeTab ? 'gamedin-widget-popup-open' : ''}`}>
+    <div className="gamedin-widget gamedin-widget-embedded">
       <div className="gamedin-widget-inner">
       <div className="gamedin-widget-bar-wrap">
       {activeTab && (
