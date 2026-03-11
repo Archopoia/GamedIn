@@ -1,0 +1,78 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "manifest_version": 3,
+  "name": "Huntr - Job Search Tracker & Autofill",
+  "short_name": "Huntr",
+  "description": "Collect, track and manage your job applications from across the web. Apply and autofill job applications in one click.",
+  "version": "2.0.44",
+  "icons": {
+    "16":"assets/huntr-chrome-icon_16.png",
+    "48":"assets/huntr-chrome-icon_48.png",
+    "128":"assets/huntr-chrome-icon_128.png"
+  },
+  "action": {
+    "default_title": "Huntr",
+    "default_icon": "assets/huntr-chrome.png"
+  },
+  "background": {
+    "service_worker": "background.bundle.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "css": [
+        "assets/simple-line-icons.css",
+        "assets/animate.css"
+      ],
+      "js": [
+        "libs/jquery-3.2.1.min.js",
+        "libs/jquery-ui.js",
+        "content.bundle.js"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://app.huntr.co/*",
+      "https://huntr.co/*",
+      "https://huntrstaging.com/*",
+      "http://localhost:3000/*",
+      "https://maps.googleapis.com/*"
+    ]
+  },
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "https://ajax.googleapis.com/",
+    "https://app.huntr.co/",
+    "http://localhost:3000/*",
+    "https://huntr.co/*",
+    "https://huntrstaging.com/*",
+    "https://fonts.googleapis.com/css?family=Lato:300,400,700,900"
+  ],
+  "permissions": [
+    "alarms",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "scripting",
+    "unlimitedStorage"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/simple-line-icons.css",
+        "assets/animate.css",
+        "assets/huntr-logo-purple.png",
+        "assets/app-logo.png",
+        "assets/fonts/Simple-Line-Icons.ttf"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
+}

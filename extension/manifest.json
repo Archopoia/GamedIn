@@ -2,10 +2,21 @@
   "manifest_version": 3,
   "name": "GamedIn",
   "version": "1.0.0",
-  "description": "Zero-effort job application tracking for GamedIn. Auto-detects LinkedIn Easy Apply success and grants rewards.",
+  "description": "Zero-effort job application tracking for GamedIn. Auto-detects apply success on LinkedIn, Indeed, Glassdoor, Greenhouse, Lever and grants rewards.",
   "permissions": ["storage"],
   "host_permissions": [
     "*://*.linkedin.com/*",
+    "*://*.indeed.com/*",
+    "*://*.indeed.co.uk/*",
+    "*://*.indeed.ca/*",
+    "*://au.indeed.com/*",
+    "*://*.glassdoor.com/*",
+    "*://*.glassdoor.co.uk/*",
+    "*://*.greenhouse.io/*",
+    "*://boards.greenhouse.io/*",
+    "*://jobs.greenhouse.io/*",
+    "*://jobs.lever.co/*",
+    "*://*.lever.co/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://localhost/*",
@@ -20,8 +31,25 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.linkedin.com/*"],
-      "js": ["content-linkedin.js"],
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.indeed.com/*",
+        "*://*.indeed.co.uk/*",
+        "*://*.indeed.ca/*",
+        "*://au.indeed.com/*",
+        "*://*.glassdoor.com/*",
+        "*://*.glassdoor.co.uk/*",
+        "*://*.greenhouse.io/*",
+        "*://boards.greenhouse.io/*",
+        "*://jobs.greenhouse.io/*",
+        "*://jobs.lever.co/*",
+        "*://*.lever.co/*"
+      ],
+      "js": [
+        "parsers/siteRegistry.js",
+        "parsers/jobParser.js",
+        "content-job-sites.js"
+      ],
       "run_at": "document_end"
     },
     {

@@ -2,6 +2,7 @@ import type { SaveStateV1 } from '../domain/types'
 
 interface ActivityEvent {
   event: string
+  site?: string
   timestamp?: number
   keywords?: string
   jobId?: string
@@ -70,9 +71,31 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
         </div>
       </div>
 
-      <h3>LinkedIn activity</h3>
+      <h3>Recent applications</h3>
+      {state.applications.length === 0 ? (
+        <p className="stats-empty">No applications yet. Apply on LinkedIn, Indeed, Glassdoor, Greenhouse, or Lever.</p>
+      ) : (
+        <ul className="activity-feed">
+          {[...state.applications]
+            .reverse()
+            .slice(0, 10)
+            .map((app) => (
+              <li key={app.id} className="activity-item">
+                <span className="activity-type">{app.source}</span>
+                <span className="activity-detail">
+                  {app.title} @ {app.company}
+                </span>
+                <span className="activity-time">
+                  {formatTime(new Date(app.createdAt).getTime())}
+                </span>
+              </li>
+            ))}
+        </ul>
+      )}
+
+      <h3>Job site activity</h3>
       <p className="stats-hint">
-        Tracked by the extension when you browse LinkedIn Jobs.
+        Tracked by the extension when you browse LinkedIn, Indeed, Glassdoor, Greenhouse, or Lever.
       </p>
       <div className="activity-counts">
         <span title="Search queries run">Searches: {counts.search}</span>
@@ -87,13 +110,16 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
       <h3>Recent activity</h3>
       {recent.length === 0 ? (
         <p className="stats-empty">
-          No activity yet. Install the extension and browse LinkedIn Jobs to see stats.
+          No browse activity yet. Install the extension and browse job sites to see stats.
         </p>
       ) : (
         <ul className="activity-feed">
           {recent.map((ev, i) => (
             <li key={i} className={`activity-item activity-${ev.event}`}>
-              <span className="activity-type">{ev.event.replace('_', ' ')}</span>
+              <span className="activity-type">
+                {ev.event.replace('_', ' ')}
+                {ev.site && <span className="activity-site"> ({ev.site})</span>}
+              </span>
               {ev.keywords && (
                 <span className="activity-detail">“{ev.keywords}”</span>
               )}

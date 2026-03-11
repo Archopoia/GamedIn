@@ -386,6 +386,12 @@ button:hover {
   color: #5a7a6a;
 }
 
+.activity-site {
+  font-weight: 400;
+  color: #5a7a6a;
+  font-size: 0.85em;
+}
+
 .stats-empty {
   font-size: 0.85rem;
   color: #7a9a8a;
