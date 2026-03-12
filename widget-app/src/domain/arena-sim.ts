@@ -9,12 +9,19 @@ const ENEMY_TYPES: EnemyType[] = [
   'despair',
 ]
 
+const LOGICAL_WIDTH = 800
+const HORIZON_Y = 120
+const PET_WORLD_Y = 860
 const SPAWN_INTERVAL_MS = 4000
-const ENEMY_SPEED = 0.8
+const ENEMY_FORWARD_SPEED = 1.15
+const ENEMY_LATERAL_STEER = 0.035
+const ENEMY_VERTICAL_STEER = 0.00025
 const FIRE_INTERVAL_MS = 800
-const PROJECTILE_SPEED = 4
+const PROJECTILE_SPEED = 8
 const PET_CENTER = 400
 const HIT_RADIUS = 25
+const MAX_ENEMY_SPREAD_X = 140
+const MAX_ENEMY_SPREAD_Y = 70
 
 /**
  * Pure arena simulation: spawn enemies, move projectiles, resolve hits, update pet mood.
@@ -23,34 +30,48 @@ const HIT_RADIUS = 25
 export function tickArena(state: SaveState, dtMs: number): SaveState {
   const arena = state.arena
   const now = Date.now()
+  const step = dtMs / 16
 
-  // 1. Move enemies toward pet
+  // 1. Move enemies from horizon toward pet ring.
   let enemies = arena.enemies.map((e) => {
-    const direction = e.x < PET_CENTER ? 1 : -1
-    const newX = e.x + direction * ENEMY_SPEED * (dtMs / 16)
-    return { ...e, x: newX }
+    const nextX = e.x + (e.targetX - e.x) * ENEMY_LATERAL_STEER * step
+    const nextY =
+      e.y +
+      ENEMY_FORWARD_SPEED * step +
+      (e.targetY - e.y) * ENEMY_VERTICAL_STEER * step
+    return { ...e, x: nextX, y: nextY }
   })
 
   // 2. Spawn enemies
   const lastSpawn = arena.lastSpawnAt ?? now
   const shouldSpawn = now - lastSpawn >= SPAWN_INTERVAL_MS
-  const spawnRate = 1 + (100 - arena.pet.mood) / 50
 
-  let nextLastSpawn = arena.lastSpawnAt
-  if (shouldSpawn && Math.random() < spawnRate * 0.5) {
+  let nextLastSpawn = arena.lastSpawnAt ?? now
+  if (shouldSpawn) {
     const type = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)]!
-    const fromLeft = Math.random() > 0.5
+    const spawnX = Math.random() * LOGICAL_WIDTH
+    const targetX = PET_CENTER + (Math.random() * 2 - 1) * MAX_ENEMY_SPREAD_X
+    const targetY = PET_WORLD_Y + (Math.random() * 2 - 1) * MAX_ENEMY_SPREAD_Y
     enemies.push({
       id: crypto.randomUUID(),
       type,
-      x: fromLeft ? -20 : 820,
+      x: spawnX,
+      y: HORIZON_Y,
+      targetX,
+      targetY,
       hp: 3,
     })
     nextLastSpawn = now
   }
 
-  enemies = enemies.filter((e) => e.x > -50 && e.x < 870)
-  const maxEnemies = 12
+  enemies = enemies.filter(
+    (e) =>
+      e.x > -120 &&
+      e.x < LOGICAL_WIDTH + 120 &&
+      e.y > HORIZON_Y - 80 &&
+      e.y < PET_WORLD_Y + 180,
+  )
+  const maxEnemies = 14
   enemies = enemies.slice(-maxEnemies)
 
   // 3. Weapon firing: spawn projectiles at interval
@@ -61,13 +82,20 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
     const timeSinceFire = now - weapon.lastFiredAt
     if (timeSinceFire >= FIRE_INTERVAL_MS && enemies.length > 0) {
       const nearest = enemies.reduce((a, b) =>
-        Math.abs(a.x - PET_CENTER) < Math.abs(b.x - PET_CENTER) ? a : b,
+        (a.x - PET_CENTER) ** 2 + (a.y - PET_WORLD_Y) ** 2 <
+        (b.x - PET_CENTER) ** 2 + (b.y - PET_WORLD_Y) ** 2
+          ? a
+          : b,
       )
-      const vx = nearest.x < PET_CENTER ? PROJECTILE_SPEED : -PROJECTILE_SPEED
+      const dx = nearest.x - PET_CENTER
+      const dy = nearest.y - (PET_WORLD_Y - 20)
+      const distance = Math.max(Math.hypot(dx, dy), 0.001)
       projectiles.push({
         id: crypto.randomUUID(),
         x: PET_CENTER,
-        vx,
+        y: PET_WORLD_Y - 20,
+        vx: (dx / distance) * PROJECTILE_SPEED,
+        vy: (dy / distance) * PROJECTILE_SPEED,
         targetEnemyId: nearest.id,
       })
       updatedWeapons.push({ ...weapon, lastFiredAt: now })
@@ -81,7 +109,8 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
   // 4. Move projectiles
   const movedProjectiles = allProjectiles.map((p) => ({
     ...p,
-    x: p.x + p.vx * (dtMs / 16),
+    x: p.x + p.vx * step,
+    y: p.y + p.vy * step,
   }))
 
   // 5. Hit detection: projectile hits enemy
@@ -94,14 +123,19 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       hitProjectileIds.add(proj.id)
       continue
     }
-    if (Math.abs(proj.x - enemy.x) < HIT_RADIUS) {
+    if (Math.hypot(proj.x - enemy.x, proj.y - enemy.y) < HIT_RADIUS) {
       hitProjectileIds.add(proj.id)
       enemyDamage.set(enemy.id, (enemyDamage.get(enemy.id) ?? 0) + 1)
     }
   }
 
   const remainingProjectiles = movedProjectiles.filter(
-    (p) => !hitProjectileIds.has(p.id) && p.x > -50 && p.x < 870,
+    (p) =>
+      !hitProjectileIds.has(p.id) &&
+      p.x > -100 &&
+      p.x < LOGICAL_WIDTH + 100 &&
+      p.y > HORIZON_Y - 120 &&
+      p.y < PET_WORLD_Y + 160,
   )
 
   enemies = enemies.map((e) => {
@@ -110,11 +144,11 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
   })
   enemies = enemies.filter((e) => e.hp > 0)
 
-  // 6. Pet takes damage when enemies reach it
-  const damageRadius = 50
+  // 6. Pet takes damage when enemies reach the ring around it.
+  const damageRadius = 95
   let petMood = arena.pet.mood
   for (const e of enemies) {
-    if (Math.abs(e.x - PET_CENTER) < damageRadius) {
+    if (Math.hypot(e.x - PET_CENTER, e.y - PET_WORLD_Y) < damageRadius) {
       petMood = Math.max(0, petMood - 0.5)
     }
   }

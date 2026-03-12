@@ -40,10 +40,47 @@ export function restoreState(parsed: unknown): SaveState {
     }
   }
   const arena = state.arena
+  const normalizedEnemies = Array.isArray(arena.enemies)
+    ? arena.enemies.map((enemy) => {
+        const e = enemy as unknown as Record<string, unknown>
+        const x = typeof e.x === 'number' ? e.x : 400
+        const y = typeof e.y === 'number' ? e.y : 120
+        return {
+          ...e,
+          x,
+          y,
+          targetX: typeof e.targetX === 'number' ? e.targetX : x,
+          targetY: typeof e.targetY === 'number' ? e.targetY : 860,
+        }
+      })
+    : []
+  const normalizedProjectiles = Array.isArray(arena.projectiles)
+    ? arena.projectiles.map((projectile) => {
+        const p = projectile as unknown as Record<string, unknown>
+        return {
+          ...p,
+          y: typeof p.y === 'number' ? p.y : 860,
+          vy: typeof p.vy === 'number' ? p.vy : -4,
+        }
+      })
+    : []
   if (!Array.isArray(arena.projectiles)) {
     state = {
       ...state,
       arena: { ...arena, projectiles: [] },
+    }
+  }
+  if (
+    normalizedEnemies !== arena.enemies ||
+    normalizedProjectiles !== arena.projectiles
+  ) {
+    state = {
+      ...state,
+      arena: {
+        ...state.arena,
+        enemies: normalizedEnemies as SaveState['arena']['enemies'],
+        projectiles: normalizedProjectiles as SaveState['arena']['projectiles'],
+      },
     }
   }
   const meta = state.meta

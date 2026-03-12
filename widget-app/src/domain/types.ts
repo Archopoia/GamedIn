@@ -36,6 +36,9 @@ export interface ArenaEnemy {
   id: string
   type: EnemyType
   x: number
+  y: number
+  targetX: number
+  targetY: number
   hp: number
 }
 
@@ -49,7 +52,9 @@ export interface ArenaWeapon {
 export interface ArenaProjectile {
   id: string
   x: number
+  y: number
   vx: number
+  vy: number
   targetEnemyId: string
 }
 

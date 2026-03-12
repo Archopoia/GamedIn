@@ -6,11 +6,31 @@ import { COLORS_HEX } from '../theme/colors'
 
 const ARENA_HEIGHT = 140
 const LOGICAL_WIDTH = 800
+const WORLD_HORIZON_Y = 120
+const WORLD_PET_Y = 860
 const TICK_MS = 100
 
 interface ArenaProps {
   state: SaveState
   setState: React.Dispatch<React.SetStateAction<SaveState>>
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function projectWorldPoint(
+  worldX: number,
+  worldY: number,
+  width: number,
+  horizonY: number,
+  petY: number,
+): { x: number; y: number; depth: number } {
+  const depth = clamp01((worldY - WORLD_HORIZON_Y) / (WORLD_PET_Y - WORLD_HORIZON_Y))
+  const perspectiveT = 1 - (1 - depth) ** 1.3
+  const screenX = (worldX / LOGICAL_WIDTH) * width
+  const screenY = horizonY + (petY - horizonY) * perspectiveT
+  return { x: screenX, y: screenY, depth }
 }
 
 function syncStageFromState(
@@ -40,16 +60,21 @@ function syncStageFromState(
   glowBottom.fill({ color: COLORS_HEX.burgundy, alpha: 0.13 })
   app.stage.addChild(glowBottom)
 
-  const gridLine = new Graphics()
-  gridLine.moveTo(0, height / 2)
-  gridLine.lineTo(width, height / 2)
-  gridLine.stroke({ width: 1, color: COLORS_HEX.border, alpha: 0.35 })
-  app.stage.addChild(gridLine)
-
   const pet = state.arena.pet
   const centerX = width / 2
   const bob = Math.sin(now / 180) * 1.5
   const centerY = height - 40 + bob
+  const horizonY = Math.round(height * 0.33)
+
+  const horizon = new Graphics()
+  horizon.ellipse(centerX, horizonY, width * 0.62, height * 0.1)
+  horizon.stroke({ width: 1.5, color: COLORS_HEX.border, alpha: 0.38 })
+  app.stage.addChild(horizon)
+
+  const horizonGlow = new Graphics()
+  horizonGlow.ellipse(centerX, horizonY - 2, width * 0.4, height * 0.06)
+  horizonGlow.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
+  app.stage.addChild(horizonGlow)
 
   // Pet with soft shadow and core.
   const petColor =
@@ -88,45 +113,61 @@ function syncStageFromState(
   petCore.y = centerY - 2
   app.stage.addChild(petCore)
 
-  // Enemies with glow.
-  for (const enemy of state.arena.enemies.slice(-8)) {
-    const ex = (enemy.x / LOGICAL_WIDTH) * width
-    const pulse = 0.12 + ((Math.sin((now + enemy.x * 20) / 250) + 1) / 2) * 0.1
+  // Enemies rise from the horizon and scale as they approach.
+  const renderEnemies = [...state.arena.enemies]
+    .slice(-14)
+    .sort((a, b) => a.y - b.y)
+  for (const enemy of renderEnemies) {
+    const projected = projectWorldPoint(enemy.x, enemy.y, width, horizonY, centerY + 18)
+    const reveal = clamp01((projected.depth - 0.04) / 0.25)
+    const pulse =
+      0.1 +
+      ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
+    const enemySize = 4 + projected.depth * 16
 
     const enemyAura = new Graphics()
-    enemyAura.circle(0, 0, 13)
-    enemyAura.fill({ color: COLORS_HEX.enemyCore, alpha: pulse })
-    enemyAura.x = ex + 8
-    enemyAura.y = height / 2
+    enemyAura.circle(0, 0, enemySize * 0.9)
+    enemyAura.fill({ color: COLORS_HEX.enemyCore, alpha: pulse * reveal })
+    enemyAura.x = projected.x
+    enemyAura.y = projected.y
     app.stage.addChild(enemyAura)
 
     const enemyGfx = new Graphics()
-    enemyGfx.rect(0, 0, 16, 16)
+    enemyGfx.rect(0, 0, enemySize, enemySize)
     enemyGfx.fill(COLORS_HEX.burgundy)
-    enemyGfx.rect(2, 2, 12, 12)
+    enemyGfx.rect(1.5, 1.5, Math.max(2, enemySize - 3), Math.max(2, enemySize - 3))
     enemyGfx.fill(COLORS_HEX.enemyCore)
-    enemyGfx.stroke({ width: 1, color: COLORS_HEX.danger })
-    enemyGfx.x = ex
-    enemyGfx.y = height / 2 - 8
+    enemyGfx.stroke({ width: 1, color: COLORS_HEX.danger, alpha: reveal })
+    enemyGfx.alpha = reveal
+    enemyGfx.x = projected.x - enemySize / 2
+    enemyGfx.y = projected.y - enemySize / 2
     app.stage.addChild(enemyGfx)
   }
 
   // Projectiles with trails.
   for (const proj of (state.arena.projectiles ?? []).slice(-15)) {
-    const px = (proj.x / LOGICAL_WIDTH) * width
+    const projected = projectWorldPoint(
+      proj.x,
+      proj.y,
+      width,
+      horizonY,
+      centerY + 18,
+    )
+    const projectileSize = 3 + projected.depth * 4
+
     const trail = new Graphics()
-    trail.rect(0, 0, 10, 3)
-    trail.fill({ color: COLORS_HEX.accent, alpha: 0.25 })
-    trail.x = px - 8
-    trail.y = height / 2 - 2
+    trail.rect(0, 0, projectileSize * 1.8, projectileSize * 0.5)
+    trail.fill({ color: COLORS_HEX.accent, alpha: 0.22 })
+    trail.x = projected.x - projectileSize * 1.5
+    trail.y = projected.y - projectileSize * 0.25
     app.stage.addChild(trail)
 
     const projGfx = new Graphics()
-    projGfx.rect(0, 0, 7, 7)
+    projGfx.rect(0, 0, projectileSize, projectileSize)
     projGfx.fill(COLORS_HEX.projectile)
     projGfx.stroke({ width: 1, color: COLORS_HEX.textBright, alpha: 0.85 })
-    projGfx.x = px
-    projGfx.y = height / 2 - 4
+    projGfx.x = projected.x - projectileSize / 2
+    projGfx.y = projected.y - projectileSize / 2
     app.stage.addChild(projGfx)
   }
 }
