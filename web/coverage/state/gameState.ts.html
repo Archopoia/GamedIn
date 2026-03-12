@@ -413,8 +413,7 @@
 <a name='L348'></a><a href='#L348'>348</a>
 <a name='L349'></a><a href='#L349'>349</a>
 <a name='L350'></a><a href='#L350'>350</a>
-<a name='L351'></a><a href='#L351'>351</a>
-<a name='L352'></a><a href='#L352'>352</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L351'></a><a href='#L351'>351</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -464,7 +463,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -767,9 +765,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
   getOrCreateArena,
-  tickArenaDrops,
-  unitForApplication,
-  unlockNextType,
+  tickArenaSpawns,
+  variantForApplication,
+  unlockNextVariant,
 } from '../domain/arena'
 import { computeLevel, computeUpgradeTier } from '../domain/progression'
 import { computeReward, type RewardBreakdown } from '../domain/reward'
@@ -777,8 +775,8 @@ import type { DomainEvent } from '../domain/events'
 import type {
   ApplicationLog,
   ApplicationSource,
-  ArenaUnit,
-  SaveStateV1,
+  ArenaEntity,
+  SaveState,
   UpgradeState,
 } from '../domain/types'
 &nbsp;
@@ -790,7 +788,7 @@ export interface ApplyCommandInput {
 }
 &nbsp;
 export interface ApplyCommandResult {
-  state: SaveStateV1
+  state: SaveState
   events: DomainEvent[]
   reward: RewardBreakdown
 }
@@ -812,10 +810,9 @@ function <span class="fstat-no" title="function not covered" >dayDiff(f</span>ro
 <span class="cstat-no" title="statement not covered" >  return Math.round((toUtc - fromUtc) / 86400000)</span>
 }
 &nbsp;
-export function createInitialState(): SaveStateV1 {
+export function createInitialState(): SaveState {
   const key = todayKey(new Date())
   return {
-    version: 1,
     profile: {
       displayName: '',
       preferredRoles: [],
@@ -844,21 +841,21 @@ export function createInitialState(): SaveStateV1 {
     },
     upgrades: DEFAULT_UPGRADES,
     arena: {
-      units: [
+      entities: [
         {
           id: crypto.randomUUID(),
-          type: 'rabbit',
+          variant: 'a',
           mood: 70,
           lastBoostedAt: null,
           lastInteractedAt: null,
           x: 80,
           facing: 1,
-          coinAccumulated: 0,
+          orbAccumulated: 0,
         },
       ],
-      droppings: [],
-      coins: [],
-      unlockedTypes: ['rabbit'],
+      debris: [],
+      orbs: [],
+      unlockedVariants: ['a'],
       arenaLevel: 1,
     },
     telemetryQueue: [],
@@ -866,9 +863,9 @@ export function createInitialState(): SaveStateV1 {
 }
 &nbsp;
 export function upsertProfile(
-  state: SaveStateV1,
-  profile: SaveStateV1['profile'],
-): SaveStateV1 {
+  state: SaveState,
+  profile: SaveState['profile'],
+): SaveState {
   return {
     ...state,
     profile,
@@ -876,7 +873,7 @@ export function upsertProfile(
 }
 &nbsp;
 export function applyLoggedCommand(
-  state: SaveStateV1,
+  state: SaveState,
   input: ApplyCommandInput,
   now = new Date(),
 ): ApplyCommandResult {
@@ -917,42 +914,42 @@ export function applyLoggedCommand(
   const unlockedUpgradeTier = computeUpgradeTier(level)
 &nbsp;
   const arena = getOrCreateArena(state)
-  const unitType = unitForApplication(
+  const variant = variantForApplication(
     input.source,
     input.qualityScore,
-    arena.unlockedTypes,
+    arena.unlockedVariants,
   )
-  const newUnits: ArenaUnit[] = []
-  for (let i = 0; i &lt; reward.unitDelta; i++) {
-    const maxX = arena.units.length &gt; 0
-      ? Math.max(...arena.units.map((a) =&gt; a.x)) + 60
+  const newEntities: ArenaEntity[] = []
+  for (let i = 0; i &lt; reward.entityDelta; i++) {
+    const maxX = arena.entities.length &gt; 0
+      ? Math.max(...arena.entities.map((a) =&gt; a.x)) + 60
       : <span class="branch-1 cbranch-no" title="branch not covered" >80</span>
-    newUnits.push({
+    newEntities.push({
       id: crypto.randomUUID(),
-      type: unitType,
+      variant,
       mood: 60 + input.qualityScore * 8,
       lastBoostedAt: null,
       lastInteractedAt: null,
       x: maxX + i * 50,
       facing: 1,
-      coinAccumulated: 0,
+      orbAccumulated: 0,
     })
   }
-  const nextUnlocked = arena.unlockedTypes
-  const maybeUnlock = unlockNextType(nextUnlocked, totalApplications)
+  const nextUnlocked = arena.unlockedVariants
+  const maybeUnlock = unlockNextVariant(nextUnlocked, totalApplications)
   <span class="missing-if-branch" title="if path not taken" >I</span>if (maybeUnlock &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >!nextUnlocked.includes(maybeUnlock)) {</span>
 <span class="cstat-no" title="statement not covered" >    nextUnlocked.push(maybeUnlock)</span>
   }
 &nbsp;
-  const nextArena: SaveStateV1['arena'] = {
+  const nextArena: SaveState['arena'] = {
     ...arena,
-    units: [...arena.units, ...newUnits].slice(0, 50),
-    droppings: arena.droppings ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
-    coins: arena.coins ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
-    unlockedTypes: [...nextUnlocked],
+    entities: [...arena.entities, ...newEntities].slice(0, 50),
+    debris: arena.debris ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
+    orbs: arena.orbs ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
+    unlockedVariants: [...nextUnlocked],
   }
 &nbsp;
-  const nextState: SaveStateV1 = {
+  const nextState: SaveState = {
     ...state,
     applications: [application, ...state.applications].slice(0, 200),
     economy: {
@@ -960,7 +957,7 @@ export function applyLoggedCommand(
       totalPointsEarned: state.economy.totalPointsEarned + reward.pointsAwarded,
     },
     units: {
-      active: nextArena.units.length,
+      active: nextArena.entities.length,
       happiestMood: Math.min(100, state.units.happiestMood + input.qualityScore),
     },
     arena: nextArena,
@@ -990,15 +987,15 @@ export function applyLoggedCommand(
         type: 'reward_granted',
         payload: {
           pointsAwarded: reward.pointsAwarded,
-          unitDelta: reward.unitDelta,
+          entityDelta: reward.entityDelta,
         },
       },
     ],
   }
 }
 &nbsp;
-export function purchaseUpgrade(state: SaveStateV1): {
-  state: SaveStateV1
+export function purchaseUpgrade(state: SaveState): {
+  state: SaveState
   event: DomainEvent | null
 } {
   <span class="missing-if-branch" title="if path not taken" >I</span>if (state.economy.points &lt; state.upgrades.upgradeCost) {
@@ -1006,7 +1003,7 @@ export function purchaseUpgrade(state: SaveStateV1): {
   }
 &nbsp;
   const nextLevel = state.upgrades.upgradeLevel + 1
-  const nextState: SaveStateV1 = {
+  const nextState: SaveState = {
     ...state,
     economy: {
       ...state.economy,
@@ -1030,7 +1027,7 @@ export function purchaseUpgrade(state: SaveStateV1): {
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >setDailyRewardCap(s</span>tate: SaveStateV1, cap: number): SaveStateV1 {
+export function <span class="fstat-no" title="function not covered" >setDailyRewardCap(s</span>tate: SaveState, cap: number): SaveState {
 <span class="cstat-no" title="statement not covered" >  return {</span>
     ...state,
     engagement: {
@@ -1040,38 +1037,38 @@ export function <span class="fstat-no" title="function not covered" >setDailyRew
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >interactUnit(s</span>tate: SaveStateV1, unitId: string): SaveStateV1 {
+export function <span class="fstat-no" title="function not covered" >interactEntity(s</span>tate: SaveState, entityId: string): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === unitId</span>
+  const entities = <span class="cstat-no" title="statement not covered" >arena.entities.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === entityId</span>
       ? { ...a, mood: Math.min(100, a.mood + 10), lastInteractedAt: new Date().toISOString() }
       : a,
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, entities } }</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >boostUnit(s</span>tate: SaveStateV1, unitId: string): SaveStateV1 {
+export function <span class="fstat-no" title="function not covered" >boostEntity(s</span>tate: SaveState, entityId: string): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === unitId</span>
+  const entities = <span class="cstat-no" title="statement not covered" >arena.entities.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === entityId</span>
       ? { ...a, mood: Math.min(100, a.mood + 15), lastBoostedAt: new Date().toISOString() }
       : a,
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, entities } }</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >cleanDropping(s</span>tate: SaveStateV1, droppingId: string): SaveStateV1 {
+export function <span class="fstat-no" title="function not covered" >clearDebris(s</span>tate: SaveState, debrisId: string): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const dropping = <span class="cstat-no" title="statement not covered" >arena.droppings.find(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id === droppingId)</span></span>
-<span class="cstat-no" title="statement not covered" >  if (!dropping) <span class="cstat-no" title="statement not covered" >return state</span></span>
-  const droppings = <span class="cstat-no" title="statement not covered" >arena.droppings.filter(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id !== droppingId)</span></span>
-  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === dropping.unitId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,</span>
+  const debrisItem = <span class="cstat-no" title="statement not covered" >arena.debris.find(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id === debrisId)</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!debrisItem) <span class="cstat-no" title="statement not covered" >return state</span></span>
+  const debris = <span class="cstat-no" title="statement not covered" >arena.debris.filter(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id !== debrisId)</span></span>
+  const entities = <span class="cstat-no" title="statement not covered" >arena.entities.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === debrisItem.entityId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,</span>
   )
   const pointsGain = <span class="cstat-no" title="statement not covered" >2</span>
 <span class="cstat-no" title="statement not covered" >  return {</span>
     ...state,
-    arena: { ...arena, droppings, units },
+    arena: { ...arena, debris, entities },
     economy: {
       points: state.economy.points + pointsGain,
       totalPointsEarned: state.economy.totalPointsEarned + pointsGain,
@@ -1079,42 +1076,42 @@ export function <span class="fstat-no" title="function not covered" >cleanDroppi
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >collectCoin(s</span>tate: SaveStateV1, coinId: string): SaveStateV1 {
+export function <span class="fstat-no" title="function not covered" >collectOrb(s</span>tate: SaveState, orbId: string): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const coin = <span class="cstat-no" title="statement not covered" >arena.coins.find(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id === coinId)</span></span>
-<span class="cstat-no" title="statement not covered" >  if (!coin) <span class="cstat-no" title="statement not covered" >return state</span></span>
-  const coins = <span class="cstat-no" title="statement not covered" >arena.coins.filter(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id !== coinId)</span></span>
+  const orb = <span class="cstat-no" title="statement not covered" >arena.orbs.find(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id === orbId)</span></span>
+<span class="cstat-no" title="statement not covered" >  if (!orb) <span class="cstat-no" title="statement not covered" >return state</span></span>
+  const orbs = <span class="cstat-no" title="statement not covered" >arena.orbs.filter(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id !== orbId)</span></span>
 <span class="cstat-no" title="statement not covered" >  return {</span>
     ...state,
-    arena: { ...arena, coins },
+    arena: { ...arena, orbs },
     economy: {
-      points: state.economy.points + coin.amount,
-      totalPointsEarned: state.economy.totalPointsEarned + coin.amount,
+      points: state.economy.points + orb.amount,
+      totalPointsEarned: state.economy.totalPointsEarned + orb.amount,
     },
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >tickArenaCoins(</span>
-  state: SaveStateV1,
+export function <span class="fstat-no" title="function not covered" >tickArenaOrbs(</span>
+  state: SaveState,
   elapsedMs: number,
-  unitPositions?: Record&lt;string, number&gt;,
-): SaveStateV1 {
+  entityPositions?: Record&lt;string, number&gt;,
+): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const { arena: nextArena <span class="cstat-no" title="statement not covered" >} = tickArenaDrops(arena, elapsedMs, unitPositions)</span>
+  const { arena: nextArena <span class="cstat-no" title="statement not covered" >} = tickArenaSpawns(arena, elapsedMs, entityPositions)</span>
 <span class="cstat-no" title="statement not covered" >  return { ...state, arena: nextArena }</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >updateUnitPosition(</span>
-  state: SaveStateV1,
-  unitId: string,
+export function <span class="fstat-no" title="function not covered" >updateEntityPosition(</span>
+  state: SaveState,
+  entityId: string,
   x: number,
   facing: 1 | -1,
-): SaveStateV1 {
+): SaveState {
   const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
-  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === unitId ? { ...a, x, facing } : a,</span>
+  const entities = <span class="cstat-no" title="statement not covered" >arena.entities.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === entityId ? { ...a, x, facing } : a,</span>
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, entities } }</span>
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -1123,7 +1120,7 @@ export function <span class="fstat-no" title="function not covered" >updateUnitP
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-12T09:02:22.261Z
+                at 2026-03-12T09:07:28.279Z
             </div>
         <script src="../prettify.js"></script>
         <script>

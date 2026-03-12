@@ -1,149 +1,141 @@
 import type {
   ApplicationSource,
-  ArenaCoin,
-  ArenaDropping,
+  ArenaDebris,
+  ArenaOrb,
   ArenaState,
-  ArenaUnit,
-  SaveStateV1,
-  UnitType,
+  ArenaEntity,
+  SaveState,
+  EntityVariant,
 } from './types'
 
-const ALL_TYPES: UnitType[] = [
-  'rabbit',
-  'bird',
-  'cat',
-  'dog',
-  'fox',
-  'owl',
-  'hedgehog',
-]
+const ALL_VARIANTS: EntityVariant[] = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
 
-const SOURCE_TYPE_MAP: Record<ApplicationSource, UnitType[]> = {
-  linkedin: ['rabbit', 'bird', 'cat'],
-  indeed: ['dog', 'fox'],
-  glassdoor: ['owl', 'hedgehog'],
-  other: ['rabbit', 'bird', 'cat', 'dog'],
+const SOURCE_VARIANT_MAP: Record<ApplicationSource, EntityVariant[]> = {
+  linkedin: ['a', 'b', 'c'],
+  indeed: ['d', 'e'],
+  glassdoor: ['f', 'g'],
+  other: ['a', 'b', 'c', 'd'],
 }
 
-export function getOrCreateArena(state: SaveStateV1): ArenaState {
-  if (state.arena && state.arena.units.length > 0) {
+export function getOrCreateArena(state: SaveState): ArenaState {
+  if (state.arena && state.arena.entities.length > 0) {
     return {
       ...state.arena,
-      droppings: state.arena.droppings ?? [],
-      coins: state.arena.coins ?? [],
+      debris: state.arena.debris ?? [],
+      orbs: state.arena.orbs ?? [],
     }
   }
-  const units: ArenaUnit[] = []
+  const entities: ArenaEntity[] = []
   const count = state.units?.active ?? 1
   for (let i = 0; i < count; i++) {
-    units.push(createUnit('rabbit', 100 + i * 20))
+    entities.push(createEntity('a', 100 + i * 20))
   }
   return {
-    units,
-    droppings: [],
-    coins: [],
-    unlockedTypes: ['rabbit'],
+    entities,
+    debris: [],
+    orbs: [],
+    unlockedVariants: ['a'],
     arenaLevel: 1,
   }
 }
 
-function createUnit(
-  type: UnitType,
+function createEntity(
+  variant: EntityVariant,
   x: number,
-  overrides?: Partial<ArenaUnit>,
-): ArenaUnit {
+  overrides?: Partial<ArenaEntity>,
+): ArenaEntity {
   return {
     id: crypto.randomUUID(),
-    type,
+    variant,
     mood: 70,
     lastBoostedAt: null,
     lastInteractedAt: null,
     x,
     facing: 1,
-    coinAccumulated: 0,
+    orbAccumulated: 0,
     ...overrides,
   }
 }
 
-export function unitForApplication(
+export function variantForApplication(
   source: ApplicationSource,
   qualityScore: number,
-  unlocked: UnitType[],
-): UnitType {
-  const pool: UnitType[] = SOURCE_TYPE_MAP[source] ?? ['rabbit']
+  unlocked: EntityVariant[],
+): EntityVariant {
+  const pool: EntityVariant[] = SOURCE_VARIANT_MAP[source] ?? ['a']
   const available = pool.filter((c) => unlocked.includes(c))
-  const choices: UnitType[] = available.length > 0 ? available : ['rabbit']
+  const choices: EntityVariant[] = available.length > 0 ? available : ['a']
   const idx = Math.min(qualityScore - 1, choices.length - 1)
-  return choices[Math.max(0, idx)] as UnitType
+  return choices[Math.max(0, idx)] as EntityVariant
 }
 
-export function unlockNextType(
-  unlocked: UnitType[],
+export function unlockNextVariant(
+  unlocked: EntityVariant[],
   totalApplications: number,
-): UnitType | null {
+): EntityVariant | null {
   const thresholds = [0, 3, 8, 15, 25, 40, 60]
   const nextIdx = unlocked.length
-  if (nextIdx >= ALL_TYPES.length || totalApplications < thresholds[nextIdx]) {
+  if (nextIdx >= ALL_VARIANTS.length || totalApplications < thresholds[nextIdx]) {
     return null
   }
-  return ALL_TYPES[nextIdx]!
+  return ALL_VARIANTS[nextIdx]!
 }
 
-const DROP_CHANCE_PER_TICK = 0.75
-const DROPPING_X_OFFSET = 10
-const COIN_DROP_THRESHOLD = 1
+const SPAWN_CHANCE_PER_TICK = 0.75
+const DEBRIS_X_OFFSET = 10
+const ORB_DROP_THRESHOLD = 1
 
-export function tickArenaDrops(
+export function tickArenaSpawns(
   arena: ArenaState,
   elapsedMs: number,
-  unitPositions?: Record<string, number>,
-): { arena: ArenaState; droppingsAdded: ArenaDropping[]; coinsAdded: ArenaCoin[] } {
-  const droppingsAdded: ArenaDropping[] = []
-  const coinsAdded: ArenaCoin[] = []
+  entityPositions?: Record<string, number>,
+): { arena: ArenaState; debrisAdded: ArenaDebris[]; orbsAdded: ArenaOrb[] } {
+  const debrisAdded: ArenaDebris[] = []
+  const orbsAdded: ArenaOrb[] = []
 
-  const dropChance = DROP_CHANCE_PER_TICK
-  const getX = (unitId: string, fallbackX: number) =>
-    unitPositions?.[unitId] ?? fallbackX
+  const spawnChance = SPAWN_CHANCE_PER_TICK
+  const getX = (entityId: string, fallbackX: number) =>
+    entityPositions?.[entityId] ?? fallbackX
 
-  const units = arena.units.map((a) => {
+  const entities = arena.entities.map((a) => {
     const gain = (a.mood / 100) * 0.5 * (elapsedMs / 3000)
-    let coinAccumulated = a.coinAccumulated + gain
-    if (coinAccumulated >= COIN_DROP_THRESHOLD) {
-      const amount = Math.floor(coinAccumulated)
-      coinsAdded.push({
+    let orbAccumulated = a.orbAccumulated + gain
+    if (orbAccumulated >= ORB_DROP_THRESHOLD) {
+      const amount = Math.floor(orbAccumulated)
+      orbsAdded.push({
         id: crypto.randomUUID(),
         x: getX(a.id, a.x),
         amount,
-        unitId: a.id,
+        entityId: a.id,
       })
-      coinAccumulated -= amount
+      orbAccumulated -= amount
     }
-    return { ...a, coinAccumulated }
+    return { ...a, orbAccumulated }
   })
 
-  for (const a of units) {
-    if (Math.random() < dropChance) {
+  for (const a of entities) {
+    if (Math.random() < spawnChance) {
       const baseX = getX(a.id, a.x)
-      const offset = (Math.random() - 0.5) * 2 * DROPPING_X_OFFSET
-      droppingsAdded.push({
+      const offset = (Math.random() - 0.5) * 2 * DEBRIS_X_OFFSET
+      debrisAdded.push({
         id: crypto.randomUUID(),
         x: baseX + offset,
-        unitId: a.id,
+        entityId: a.id,
       })
     }
   }
 
-  const droppings = [...(arena.droppings ?? []), ...droppingsAdded].slice(-80)
-  const coins = [...(arena.coins ?? []), ...coinsAdded].slice(-80)
+  const debris = [...(arena.debris ?? []), ...debrisAdded].slice(-80)
+  const orbs = [...(arena.orbs ?? []), ...orbsAdded].slice(-80)
 
   return {
     arena: {
       ...arena,
-      units,
-      droppings,
-      coins,
+      entities,
+      debris,
+      orbs,
     },
-    droppingsAdded,
-    coinsAdded,
+    debrisAdded,
+    orbsAdded,
   }
 }

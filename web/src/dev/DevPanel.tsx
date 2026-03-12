@@ -1,4 +1,4 @@
-import type { SaveStateV1 } from '../domain/types'
+import type { SaveState } from '../domain/types'
 import { isDevMode } from '../lib/devMode'
 import {
   applyLoggedCommand,
@@ -12,8 +12,8 @@ import {
 } from './fixtures'
 
 interface DevPanelProps {
-  state: SaveStateV1
-  setState: React.Dispatch<React.SetStateAction<SaveStateV1>>
+  state: SaveState
+  setState: React.Dispatch<React.SetStateAction<SaveState>>
   setMessage: (msg: string) => void
 }
 
@@ -22,7 +22,7 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
 
   const handleQuickApply = () => {
     const input = generateTestApplication()
-    setState((current: SaveStateV1) => {
+    setState((current: SaveState) => {
       const result = applyLoggedCommand(current, input)
       const telemetry = result.events.map((e) => toTelemetryEvent(e, result.state))
       return {
@@ -35,7 +35,7 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
 
   const handleBulkApply = (count: number) => {
     const inputs = generateTestApplications(count)
-    setState((current: SaveStateV1) => {
+    setState((current: SaveState) => {
       let next = current
       for (const input of inputs) {
         const result = applyLoggedCommand(next, input)

@@ -175,7 +175,7 @@ function App() {
         </div>
         <div className="header-metrics">
           <span title="Points">Pts {state.economy.points}</span>
-          <span title="Units">Units {state.units.active}</span>
+          <span title="Entities">Entities {state.units.active}</span>
           <span title="Level">Lv {state.progression.level}</span>
           <span title="Streak">Streak {state.engagement.streakDays}d</span>
         </div>

@@ -1,8 +1,8 @@
 import {
   getOrCreateArena,
-  tickArenaDrops,
-  unitForApplication,
-  unlockNextType,
+  tickArenaSpawns,
+  variantForApplication,
+  unlockNextVariant,
 } from '../domain/arena'
 import { computeLevel, computeUpgradeTier } from '../domain/progression'
 import { computeReward, type RewardBreakdown } from '../domain/reward'
@@ -10,8 +10,8 @@ import type { DomainEvent } from '../domain/events'
 import type {
   ApplicationLog,
   ApplicationSource,
-  ArenaUnit,
-  SaveStateV1,
+  ArenaEntity,
+  SaveState,
   UpgradeState,
 } from '../domain/types'
 
@@ -23,7 +23,7 @@ export interface ApplyCommandInput {
 }
 
 export interface ApplyCommandResult {
-  state: SaveStateV1
+  state: SaveState
   events: DomainEvent[]
   reward: RewardBreakdown
 }
@@ -45,10 +45,9 @@ function dayDiff(fromIso: string, toIso: string): number {
   return Math.round((toUtc - fromUtc) / 86400000)
 }
 
-export function createInitialState(): SaveStateV1 {
+export function createInitialState(): SaveState {
   const key = todayKey(new Date())
   return {
-    version: 1,
     profile: {
       displayName: '',
       preferredRoles: [],
@@ -77,21 +76,21 @@ export function createInitialState(): SaveStateV1 {
     },
     upgrades: DEFAULT_UPGRADES,
     arena: {
-      units: [
+      entities: [
         {
           id: crypto.randomUUID(),
-          type: 'rabbit',
+          variant: 'a',
           mood: 70,
           lastBoostedAt: null,
           lastInteractedAt: null,
           x: 80,
           facing: 1,
-          coinAccumulated: 0,
+          orbAccumulated: 0,
         },
       ],
-      droppings: [],
-      coins: [],
-      unlockedTypes: ['rabbit'],
+      debris: [],
+      orbs: [],
+      unlockedVariants: ['a'],
       arenaLevel: 1,
     },
     telemetryQueue: [],
@@ -99,9 +98,9 @@ export function createInitialState(): SaveStateV1 {
 }
 
 export function upsertProfile(
-  state: SaveStateV1,
-  profile: SaveStateV1['profile'],
-): SaveStateV1 {
+  state: SaveState,
+  profile: SaveState['profile'],
+): SaveState {
   return {
     ...state,
     profile,
@@ -109,7 +108,7 @@ export function upsertProfile(
 }
 
 export function applyLoggedCommand(
-  state: SaveStateV1,
+  state: SaveState,
   input: ApplyCommandInput,
   now = new Date(),
 ): ApplyCommandResult {
@@ -150,42 +149,42 @@ export function applyLoggedCommand(
   const unlockedUpgradeTier = computeUpgradeTier(level)
 
   const arena = getOrCreateArena(state)
-  const unitType = unitForApplication(
+  const variant = variantForApplication(
     input.source,
     input.qualityScore,
-    arena.unlockedTypes,
+    arena.unlockedVariants,
   )
-  const newUnits: ArenaUnit[] = []
-  for (let i = 0; i < reward.unitDelta; i++) {
-    const maxX = arena.units.length > 0
-      ? Math.max(...arena.units.map((a) => a.x)) + 60
+  const newEntities: ArenaEntity[] = []
+  for (let i = 0; i < reward.entityDelta; i++) {
+    const maxX = arena.entities.length > 0
+      ? Math.max(...arena.entities.map((a) => a.x)) + 60
       : 80
-    newUnits.push({
+    newEntities.push({
       id: crypto.randomUUID(),
-      type: unitType,
+      variant,
       mood: 60 + input.qualityScore * 8,
       lastBoostedAt: null,
       lastInteractedAt: null,
       x: maxX + i * 50,
       facing: 1,
-      coinAccumulated: 0,
+      orbAccumulated: 0,
     })
   }
-  const nextUnlocked = arena.unlockedTypes
-  const maybeUnlock = unlockNextType(nextUnlocked, totalApplications)
+  const nextUnlocked = arena.unlockedVariants
+  const maybeUnlock = unlockNextVariant(nextUnlocked, totalApplications)
   if (maybeUnlock && !nextUnlocked.includes(maybeUnlock)) {
     nextUnlocked.push(maybeUnlock)
   }
 
-  const nextArena: SaveStateV1['arena'] = {
+  const nextArena: SaveState['arena'] = {
     ...arena,
-    units: [...arena.units, ...newUnits].slice(0, 50),
-    droppings: arena.droppings ?? [],
-    coins: arena.coins ?? [],
-    unlockedTypes: [...nextUnlocked],
+    entities: [...arena.entities, ...newEntities].slice(0, 50),
+    debris: arena.debris ?? [],
+    orbs: arena.orbs ?? [],
+    unlockedVariants: [...nextUnlocked],
   }
 
-  const nextState: SaveStateV1 = {
+  const nextState: SaveState = {
     ...state,
     applications: [application, ...state.applications].slice(0, 200),
     economy: {
@@ -193,7 +192,7 @@ export function applyLoggedCommand(
       totalPointsEarned: state.economy.totalPointsEarned + reward.pointsAwarded,
     },
     units: {
-      active: nextArena.units.length,
+      active: nextArena.entities.length,
       happiestMood: Math.min(100, state.units.happiestMood + input.qualityScore),
     },
     arena: nextArena,
@@ -223,15 +222,15 @@ export function applyLoggedCommand(
         type: 'reward_granted',
         payload: {
           pointsAwarded: reward.pointsAwarded,
-          unitDelta: reward.unitDelta,
+          entityDelta: reward.entityDelta,
         },
       },
     ],
   }
 }
 
-export function purchaseUpgrade(state: SaveStateV1): {
-  state: SaveStateV1
+export function purchaseUpgrade(state: SaveState): {
+  state: SaveState
   event: DomainEvent | null
 } {
   if (state.economy.points < state.upgrades.upgradeCost) {
@@ -239,7 +238,7 @@ export function purchaseUpgrade(state: SaveStateV1): {
   }
 
   const nextLevel = state.upgrades.upgradeLevel + 1
-  const nextState: SaveStateV1 = {
+  const nextState: SaveState = {
     ...state,
     economy: {
       ...state.economy,
@@ -263,7 +262,7 @@ export function purchaseUpgrade(state: SaveStateV1): {
   }
 }
 
-export function setDailyRewardCap(state: SaveStateV1, cap: number): SaveStateV1 {
+export function setDailyRewardCap(state: SaveState, cap: number): SaveState {
   return {
     ...state,
     engagement: {
@@ -273,38 +272,38 @@ export function setDailyRewardCap(state: SaveStateV1, cap: number): SaveStateV1 
   }
 }
 
-export function interactUnit(state: SaveStateV1, unitId: string): SaveStateV1 {
+export function interactEntity(state: SaveState, entityId: string): SaveState {
   const arena = getOrCreateArena(state)
-  const units = arena.units.map((a) =>
-    a.id === unitId
+  const entities = arena.entities.map((a) =>
+    a.id === entityId
       ? { ...a, mood: Math.min(100, a.mood + 10), lastInteractedAt: new Date().toISOString() }
       : a,
   )
-  return { ...state, arena: { ...arena, units } }
+  return { ...state, arena: { ...arena, entities } }
 }
 
-export function boostUnit(state: SaveStateV1, unitId: string): SaveStateV1 {
+export function boostEntity(state: SaveState, entityId: string): SaveState {
   const arena = getOrCreateArena(state)
-  const units = arena.units.map((a) =>
-    a.id === unitId
+  const entities = arena.entities.map((a) =>
+    a.id === entityId
       ? { ...a, mood: Math.min(100, a.mood + 15), lastBoostedAt: new Date().toISOString() }
       : a,
   )
-  return { ...state, arena: { ...arena, units } }
+  return { ...state, arena: { ...arena, entities } }
 }
 
-export function cleanDropping(state: SaveStateV1, droppingId: string): SaveStateV1 {
+export function clearDebris(state: SaveState, debrisId: string): SaveState {
   const arena = getOrCreateArena(state)
-  const dropping = arena.droppings.find((d) => d.id === droppingId)
-  if (!dropping) return state
-  const droppings = arena.droppings.filter((d) => d.id !== droppingId)
-  const units = arena.units.map((a) =>
-    a.id === dropping.unitId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,
+  const debrisItem = arena.debris.find((d) => d.id === debrisId)
+  if (!debrisItem) return state
+  const debris = arena.debris.filter((d) => d.id !== debrisId)
+  const entities = arena.entities.map((a) =>
+    a.id === debrisItem.entityId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,
   )
   const pointsGain = 2
   return {
     ...state,
-    arena: { ...arena, droppings, units },
+    arena: { ...arena, debris, entities },
     economy: {
       points: state.economy.points + pointsGain,
       totalPointsEarned: state.economy.totalPointsEarned + pointsGain,
@@ -312,40 +311,40 @@ export function cleanDropping(state: SaveStateV1, droppingId: string): SaveState
   }
 }
 
-export function collectCoin(state: SaveStateV1, coinId: string): SaveStateV1 {
+export function collectOrb(state: SaveState, orbId: string): SaveState {
   const arena = getOrCreateArena(state)
-  const coin = arena.coins.find((c) => c.id === coinId)
-  if (!coin) return state
-  const coins = arena.coins.filter((c) => c.id !== coinId)
+  const orb = arena.orbs.find((c) => c.id === orbId)
+  if (!orb) return state
+  const orbs = arena.orbs.filter((c) => c.id !== orbId)
   return {
     ...state,
-    arena: { ...arena, coins },
+    arena: { ...arena, orbs },
     economy: {
-      points: state.economy.points + coin.amount,
-      totalPointsEarned: state.economy.totalPointsEarned + coin.amount,
+      points: state.economy.points + orb.amount,
+      totalPointsEarned: state.economy.totalPointsEarned + orb.amount,
     },
   }
 }
 
-export function tickArenaCoins(
-  state: SaveStateV1,
+export function tickArenaOrbs(
+  state: SaveState,
   elapsedMs: number,
-  unitPositions?: Record<string, number>,
-): SaveStateV1 {
+  entityPositions?: Record<string, number>,
+): SaveState {
   const arena = getOrCreateArena(state)
-  const { arena: nextArena } = tickArenaDrops(arena, elapsedMs, unitPositions)
+  const { arena: nextArena } = tickArenaSpawns(arena, elapsedMs, entityPositions)
   return { ...state, arena: nextArena }
 }
 
-export function updateUnitPosition(
-  state: SaveStateV1,
-  unitId: string,
+export function updateEntityPosition(
+  state: SaveState,
+  entityId: string,
   x: number,
   facing: 1 | -1,
-): SaveStateV1 {
+): SaveState {
   const arena = getOrCreateArena(state)
-  const units = arena.units.map((a) =>
-    a.id === unitId ? { ...a, x, facing } : a,
+  const entities = arena.entities.map((a) =>
+    a.id === entityId ? { ...a, x, facing } : a,
   )
-  return { ...state, arena: { ...arena, units } }
+  return { ...state, arena: { ...arena, entities } }
 }

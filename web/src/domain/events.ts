@@ -1,4 +1,4 @@
-import type { ApplicationLog, SaveStateV1, TelemetryEvent } from './types'
+import type { ApplicationLog, SaveState, TelemetryEvent } from './types'
 
 export type DomainEvent =
   | {
@@ -11,7 +11,7 @@ export type DomainEvent =
       type: 'reward_granted'
       payload: {
         pointsAwarded: number
-        unitDelta: number
+        entityDelta: number
       }
     }
   | {
@@ -24,7 +24,7 @@ export type DomainEvent =
 
 export function toTelemetryEvent(
   event: DomainEvent,
-  state: SaveStateV1,
+  state: SaveState,
 ): TelemetryEvent {
   switch (event.type) {
     case 'application_logged':
@@ -43,7 +43,7 @@ export function toTelemetryEvent(
         timestamp: new Date().toISOString(),
         payload: {
           pointsAwarded: event.payload.pointsAwarded,
-          unitDelta: event.payload.unitDelta,
+          entityDelta: event.payload.entityDelta,
           pointsBalance: state.economy.points,
         },
       }

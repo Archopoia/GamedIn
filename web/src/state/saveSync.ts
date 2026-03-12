@@ -1,13 +1,13 @@
-import type { SaveStateV1 } from '../domain/types'
+import type { SaveState } from '../domain/types'
 import { getOrCreateArena } from '../domain/arena'
 import { createInitialState } from './gameState'
 
-const STORAGE_KEY = 'gamedin.save.v1'
+const STORAGE_KEY = 'gamedin.save'
 
-function isSaveStateV1(value: unknown): value is SaveStateV1 {
+function isSaveState(value: unknown): value is SaveState {
   if (typeof value !== 'object' || value === null) return false
   const c = value as Record<string, unknown>
-  if (c.version !== 1 || !Array.isArray(c.applications)) return false
+  if (!Array.isArray(c.applications)) return false
   const economy = c.economy as Record<string, unknown> | undefined
   const units = c.units as Record<string, unknown> | undefined
   const upgrades = c.upgrades as Record<string, unknown> | undefined
@@ -17,26 +17,26 @@ function isSaveStateV1(value: unknown): value is SaveStateV1 {
   return true
 }
 
-export function serializeState(state: SaveStateV1): string {
+export function serializeState(state: SaveState): string {
   return JSON.stringify(state)
 }
 
-export function restoreState(serialized: string): SaveStateV1 {
+export function restoreState(serialized: string): SaveState {
   let parsed: unknown
   try {
     parsed = JSON.parse(serialized)
   } catch {
     return createInitialState()
   }
-  if (!isSaveStateV1(parsed)) return createInitialState()
-  const state = parsed as SaveStateV1
-  if (!state.arena || state.arena.units.length === 0) {
+  if (!isSaveState(parsed)) return createInitialState()
+  const state = parsed as SaveState
+  if (!state.arena || state.arena.entities.length === 0) {
     return { ...state, arena: getOrCreateArena(state) }
   }
   return state
 }
 
-export function loadState(): SaveStateV1 {
+export function loadState(): SaveState {
   const saved = localStorage.getItem(STORAGE_KEY)
   if (!saved) return createInitialState()
   try {
@@ -46,7 +46,7 @@ export function loadState(): SaveStateV1 {
   }
 }
 
-export function saveState(state: SaveStateV1): void {
+export function saveState(state: SaveState): void {
   localStorage.setItem(STORAGE_KEY, serializeState(state))
 }
 

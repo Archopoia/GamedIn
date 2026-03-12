@@ -1,4 +1,4 @@
-import type { SaveStateV1 } from '../domain/types'
+import type { SaveState } from '../domain/types'
 
 interface ActivityEvent {
   event: string
@@ -13,7 +13,7 @@ interface ActivityEvent {
 }
 
 interface StatsPanelProps {
-  state: SaveStateV1
+  state: SaveState
   activity: ActivityEvent[]
   onRefresh: () => void
 }
@@ -67,7 +67,7 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
         </div>
         <div className="stat-card">
           <span className="stat-value">{state.units.active}</span>
-          <span className="stat-label">Units</span>
+          <span className="stat-label">Entities</span>
         </div>
       </div>
 

@@ -2,38 +2,38 @@ import { useCallback, useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 import { ArenaScene } from './ArenaScene'
 import { getOrCreateArena } from '../domain/arena'
-import type { ArenaUnit, SaveStateV1 } from '../domain/types'
+import type { ArenaEntity, SaveState } from '../domain/types'
 import {
-  boostUnit,
-  cleanDropping,
-  collectCoin,
-  interactUnit,
-  tickArenaCoins,
-  updateUnitPosition,
+  boostEntity,
+  clearDebris,
+  collectOrb,
+  interactEntity,
+  tickArenaOrbs,
+  updateEntityPosition,
 } from '../state/gameState'
 
 const ARENA_HEIGHT = 140
 
 interface ArenaProps {
-  state: SaveStateV1
-  setState: React.Dispatch<React.SetStateAction<SaveStateV1>>
+  state: SaveState
+  setState: React.Dispatch<React.SetStateAction<SaveState>>
   setMessage: (msg: string) => void
 }
 
 export function Arena({ state, setState, setMessage }: ArenaProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
-  const unitsRef = useRef<ArenaUnit[]>([])
+  const entitiesRef = useRef<ArenaEntity[]>([])
 
   const arena = getOrCreateArena(state)
-  unitsRef.current = arena.units
+  entitiesRef.current = arena.entities
 
   const arenaRef = useRef(arena)
   arenaRef.current = arena
 
   const onInteract = useCallback(
     (id: string) => {
-      setState((s) => interactUnit(s, id))
+      setState((s) => interactEntity(s, id))
       setMessage('Interacted!')
     },
     [setState, setMessage],
@@ -41,38 +41,38 @@ export function Arena({ state, setState, setMessage }: ArenaProps) {
 
   const onBoost = useCallback(
     (id: string) => {
-      setState((s) => boostUnit(s, id))
+      setState((s) => boostEntity(s, id))
       setMessage('Boosted!')
     },
     [setState, setMessage],
   )
 
-  const onClean = useCallback(
-    (droppingId: string) => {
-      setState((s) => cleanDropping(s, droppingId))
-      setMessage('Cleaned! +2 pts')
+  const onClearDebris = useCallback(
+    (debrisId: string) => {
+      setState((s) => clearDebris(s, debrisId))
+      setMessage('Cleared! +2 pts')
     },
     [setState, setMessage],
   )
 
-  const onCollectCoin = useCallback(
-    (coinId: string) => {
-      setState((s) => collectCoin(s, coinId))
-      setMessage('Coins collected!')
+  const onCollectOrb = useCallback(
+    (orbId: string) => {
+      setState((s) => collectOrb(s, orbId))
+      setMessage('Collected!')
     },
     [setState, setMessage],
   )
 
   const onPositionUpdate = useCallback(
     (id: string, x: number, facing: 1 | -1) => {
-      setState((s) => updateUnitPosition(s, id, x, facing))
+      setState((s) => updateEntityPosition(s, id, x, facing))
     },
     [setState],
   )
 
   const onTick = useCallback(
-    (elapsedMs: number, unitPositions: Record<string, number>) => {
-      setState((s) => tickArenaCoins(s, elapsedMs, unitPositions))
+    (elapsedMs: number, entityPositions: Record<string, number>) => {
+      setState((s) => tickArenaOrbs(s, elapsedMs, entityPositions))
     },
     [setState],
   )
@@ -96,13 +96,13 @@ export function Arena({ state, setState, setMessage }: ArenaProps) {
     gameRef.current = game
 
     game.scene.start('ArenaScene', {
-      units: arena.units,
-      droppings: arena.droppings ?? [],
-      coins: arena.coins ?? [],
+      entities: arena.entities,
+      debris: arena.debris ?? [],
+      orbs: arena.orbs ?? [],
       onInteract,
       onBoost,
-      onClean,
-      onCollectCoin,
+      onClearDebris,
+      onCollectOrb,
       onPositionUpdate,
       onTick,
     })
@@ -114,28 +114,28 @@ export function Arena({ state, setState, setMessage }: ArenaProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Phaser init once
   }, [])
 
-  const unitIds = arena.units.map((a) => a.id).join(',')
-  const droppingsKey = (arena.droppings ?? []).map((d) => d.id).join(',')
-  const coinsKey = (arena.coins ?? []).map((c) => c.id).join(',')
-  const droppingsCount = (arena.droppings ?? []).length
+  const entityIds = arena.entities.map((a) => a.id).join(',')
+  const debrisKey = (arena.debris ?? []).map((d) => d.id).join(',')
+  const orbsKey = (arena.orbs ?? []).map((c) => c.id).join(',')
+  const debrisCount = (arena.debris ?? []).length
   useEffect(() => {
     const scene = gameRef.current?.scene.getScene('ArenaScene') as
-      | { setArena: (p: { units: ArenaUnit[]; droppings: unknown[]; coins: unknown[] }) => void }
+      | { setArena: (p: { entities: ArenaEntity[]; debris: unknown[]; orbs: unknown[] }) => void }
       | undefined
     if (scene?.setArena) {
       scene.setArena({
-        units: arenaRef.current.units,
-        droppings: arenaRef.current.droppings ?? [],
-        coins: arenaRef.current.coins ?? [],
+        entities: arenaRef.current.entities,
+        debris: arenaRef.current.debris ?? [],
+        orbs: arenaRef.current.orbs ?? [],
       })
     }
-  }, [unitIds, droppingsKey, coinsKey, droppingsCount])
+  }, [entityIds, debrisKey, orbsKey, debrisCount])
 
   return (
     <div className="arena-overlay">
       <div ref={rootRef} className="arena-canvas" />
       <div className="arena-hint">
-        Click to interact · Right-click to boost · Click items to clean/collect
+        Click to interact · Right-click to boost · Click items to clear/collect
       </div>
     </div>
   )

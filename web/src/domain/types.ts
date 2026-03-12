@@ -1,36 +1,29 @@
 export type ApplicationSource = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
 
-export type UnitType =
-  | 'rabbit'
-  | 'bird'
-  | 'cat'
-  | 'dog'
-  | 'fox'
-  | 'owl'
-  | 'hedgehog'
+export type EntityVariant = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g'
 
-export interface ArenaUnit {
+export interface ArenaEntity {
   id: string
-  type: UnitType
+  variant: EntityVariant
   mood: number
   lastBoostedAt: string | null
   lastInteractedAt: string | null
   x: number
   facing: 1 | -1
-  coinAccumulated: number
+  orbAccumulated: number
 }
 
-export interface ArenaDropping {
+export interface ArenaDebris {
   id: string
   x: number
-  unitId: string
+  entityId: string
 }
 
-export interface ArenaCoin {
+export interface ArenaOrb {
   id: string
   x: number
   amount: number
-  unitId: string
+  entityId: string
 }
 
 export interface Profile {
@@ -78,10 +71,10 @@ export interface UpgradeState {
 }
 
 export interface ArenaState {
-  units: ArenaUnit[]
-  droppings: ArenaDropping[]
-  coins: ArenaCoin[]
-  unlockedTypes: UnitType[]
+  entities: ArenaEntity[]
+  debris: ArenaDebris[]
+  orbs: ArenaOrb[]
+  unlockedVariants: EntityVariant[]
   arenaLevel: number
 }
 
@@ -91,8 +84,7 @@ export interface TelemetryEvent {
   payload: Record<string, string | number | boolean>
 }
 
-export interface SaveStateV1 {
-  version: 1
+export interface SaveState {
   profile: Profile
   applications: ApplicationLog[]
   economy: EconomyState

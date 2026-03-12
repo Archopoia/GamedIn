@@ -16,7 +16,7 @@ import {
 import { Arena } from '../game/Arena'
 import { generateTestApplication, generateTestApplications } from '../dev/fixtures'
 import { loadState, saveState } from './storage'
-import type { SaveStateV1 } from '../domain/types'
+import type { SaveState } from '../domain/types'
 import './WidgetApp.css'
 
 const PENDING_LOGS_KEY = 'gamedin.pendingLogs'
@@ -50,7 +50,7 @@ function formatTime(ts?: number) {
 }
 
 export function WidgetApp() {
-  const [state, setState] = useState<SaveStateV1 | null>(null)
+  const [state, setState] = useState<SaveState | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId | null>(null)
   const [profileInput, setProfileInput] = useState({ displayName: '', preferredRoles: '', dailyApplyGoal: '3', cap: '5' })
@@ -68,7 +68,7 @@ export function WidgetApp() {
     })
   }, [])
 
-  const persist = useCallback((s: SaveStateV1) => {
+  const persist = useCallback((s: SaveState) => {
     saveState(s)
   }, [])
 
@@ -354,7 +354,7 @@ export function WidgetApp() {
           <span title="Points">Pts {state.economy.points}</span>
           <span title="Streak">Streak {state.engagement.streakDays}d</span>
           <span title="Level">Lv {state.progression.level}</span>
-          <span title="Units">Units {state.units.active}</span>
+          <span title="Entities">Entities {state.units.active}</span>
           <span title="Today">
             {state.engagement.appliesToday}/{state.profile.dailyApplyGoal}
           </span>
@@ -383,7 +383,7 @@ export function WidgetApp() {
       <div className="gamedin-widget-arena-wrap">
         <Arena
           state={state}
-          setState={setState as React.Dispatch<React.SetStateAction<SaveStateV1>>}
+          setState={setState as React.Dispatch<React.SetStateAction<SaveState>>}
           setMessage={setMessage}
         />
       </div>

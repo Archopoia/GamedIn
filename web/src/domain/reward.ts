@@ -2,7 +2,7 @@ import type { EngagementState, UpgradeState } from './types'
 
 export interface RewardBreakdown {
   pointsAwarded: number
-  unitDelta: number
+  entityDelta: number
   qualityMultiplier: number
   streakBonus: number
   capped: boolean
@@ -26,7 +26,7 @@ export function computeReward(
 
   return {
     pointsAwarded,
-    unitDelta: qualityScore >= 4 ? 2 : 1,
+    entityDelta: qualityScore >= 4 ? 2 : 1,
     qualityMultiplier,
     streakBonus,
     capped,

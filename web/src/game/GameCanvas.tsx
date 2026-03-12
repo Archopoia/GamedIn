@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 
 interface GameCanvasProps {
-  units: number
+  entities: number
 }
 
-export function GameCanvas({ units }: GameCanvasProps) {
+export function GameCanvas({ entities }: GameCanvasProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
   const textRef = useRef<Phaser.GameObjects.Text | null>(null)
@@ -29,7 +29,7 @@ export function GameCanvas({ units }: GameCanvasProps) {
             fontSize: '14px',
             fontFamily: 'Arial',
           })
-          textRef.current = this.add.text(16, 44, `Units: ${units}`, {
+          textRef.current = this.add.text(16, 44, `Entities: ${entities}`, {
             color: '#dfffea',
             fontSize: '13px',
             fontFamily: 'Arial',
@@ -45,11 +45,11 @@ export function GameCanvas({ units }: GameCanvasProps) {
       gameRef.current = null
       textRef.current = null
     }
-  }, [units])
+  }, [entities])
 
   useEffect(() => {
-    textRef.current?.setText(`Units: ${units}`)
-  }, [units])
+    textRef.current?.setText(`Entities: ${entities}`)
+  }, [entities])
 
   return <div className="game-canvas" ref={rootRef} />
 }

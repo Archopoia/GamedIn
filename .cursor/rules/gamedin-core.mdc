@@ -44,6 +44,7 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 
 - Keep one canonical term per concept across code, UI, events, and docs.
 - If renaming, update all touched references immediately to prevent dual terminology.
+- **No version suffixes:** No `SaveStateV1`, `v1`, `V2`, or similar. Use `SaveState`, `Save`, etc. No `gamedin.save.v1`—use `gamedin.save`.
 
 ## Runtime Reliability
 
