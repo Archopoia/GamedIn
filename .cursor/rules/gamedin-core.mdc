@@ -21,12 +21,25 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 4. Before introducing external APIs/libraries, verify current usage/docs with Context7 when available.
 5. **Always rebuild at the end of changes:** Run `npm run build` and `npm run build:widget` in `web/` after edits to extension, web app, or widget so the user sees the latest build.
 
+## Stack (AI Vibecoding Optimized)
+
+- **Keep:** TypeScript (strict), React, Vite, Zod, Vitest, Playwright, raw Canvas. All have strong AI training data.
+- **Domain:** Pure TS modules in `domain/` — no React, no side effects. One concept per file.
+- **State:** Command pattern (`applyLoggedCommand`, `confirmSpin`, `selectUpgrade`) — explicit inputs/outputs.
+- **Arena:** Split render vs simulation. `domain/arena-sim.ts` = pure sim (spawn, move, hit detection). `game/Arena.tsx` = RAF loop + draw.
+- **Avoid:** Redux, Phaser/heavy engines, `any`, `@ts-ignore` without justification. Use Context7 for library docs when adding/changing usage.
+
 ## Architecture and Boundaries
 
 - TypeScript is the orchestration layer; keep hot paths data-oriented and isolated for possible worker/WASM acceleration.
 - Separate simulation backing state from gameplay-facing surface interactions.
 - Avoid monolithic "god systems": extract reusable modules early.
 - Use plugin/module boundaries for optional features; avoid hidden cross-module coupling.
+
+## JSDoc for AI Context
+
+- Add JSDoc to all exported domain and state functions. Include purpose, constraints, and edge cases.
+- Example: `/** Runs gacha spin. Outcome odds: Ghosted 60%, Rejected 25%, Interview 12%, Offer 3%. Boosts rare odds if timeOnDetailSec >= 60 or lastCardHoverDurationSec >= 20. */`
 
 ## Type Safety and Code Quality
 

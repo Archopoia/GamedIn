@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:widget": "tsc -b && vite build --config vite.widget.config.ts",
+    "dev": "vite widget.html",
+    "build": "tsc -b && vite build --config vite.widget.config.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -14,13 +13,10 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "extension:dev": "node scripts/extension-dev.js",
-    "preview": "vite preview",
+    "preview": "vite preview --config vite.widget.config.ts",
     "prepare": "husky"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.1",
-    "phaser": "^3.90.0",
-    "posthog-js": "^1.360.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zod": "^4.3.6"

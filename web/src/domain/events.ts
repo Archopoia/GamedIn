@@ -3,15 +3,13 @@ import type { ApplicationLog, SaveState, TelemetryEvent } from './types'
 export type DomainEvent =
   | {
       type: 'application_logged'
-      payload: {
-        application: ApplicationLog
-      }
+      payload: { application: ApplicationLog }
     }
   | {
       type: 'reward_granted'
       payload: {
-        pointsAwarded: number
-        entityDelta: number
+        hopiumAwarded: number
+        outcome: string
       }
     }
   | {
@@ -34,7 +32,7 @@ export function toTelemetryEvent(
         payload: {
           source: event.payload.application.source,
           qualityScore: event.payload.application.qualityScore,
-          totalApplications: state.progression.totalApplications,
+          totalApplications: state.applications.length,
         },
       }
     case 'reward_granted':
@@ -42,9 +40,9 @@ export function toTelemetryEvent(
         name: event.type,
         timestamp: new Date().toISOString(),
         payload: {
-          pointsAwarded: event.payload.pointsAwarded,
-          entityDelta: event.payload.entityDelta,
-          pointsBalance: state.economy.points,
+          hopiumAwarded: event.payload.hopiumAwarded,
+          outcome: event.payload.outcome,
+          hopiumBalance: state.economy.hopium,
         },
       }
     case 'upgrade_purchased':
@@ -54,7 +52,7 @@ export function toTelemetryEvent(
         payload: {
           upgrade: event.payload.upgrade,
           newLevel: event.payload.newLevel,
-          pointsBalance: state.economy.points,
+          hopiumBalance: state.economy.hopium,
         },
       }
   }

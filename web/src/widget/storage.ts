@@ -4,7 +4,6 @@
  */
 
 import type { SaveState } from '../domain/types'
-import { getOrCreateArena } from '../domain/arena'
 import { createInitialState } from '../state/gameState'
 
 const STORAGE_KEY = 'gamedin.save'
@@ -14,19 +13,52 @@ function isSaveState(value: unknown): value is SaveState {
   const c = value as Record<string, unknown>
   if (!Array.isArray(c.applications)) return false
   const economy = c.economy as Record<string, unknown> | undefined
-  const units = c.units as Record<string, unknown> | undefined
-  const upgrades = c.upgrades as Record<string, unknown> | undefined
-  if (!economy || typeof economy.points !== 'number') return false
-  if (!units || typeof units.active !== 'number') return false
-  if (!upgrades || typeof upgrades.upgradeLevel !== 'number') return false
+  const arena = c.arena as Record<string, unknown> | undefined
+  const run = c.run as Record<string, unknown> | undefined
+  const meta = c.meta as Record<string, unknown> | undefined
+  if (!economy || typeof economy.hopium !== 'number') return false
+  if (!arena || typeof arena.pet !== 'object') return false
+  if (!run || typeof run.appliesToday !== 'number') return false
+  if (!meta || !Array.isArray(meta.achievements)) return false
   return true
 }
 
 export function restoreState(parsed: unknown): SaveState {
   if (!isSaveState(parsed)) return createInitialState()
-  const state = parsed as SaveState
-  if (!state.arena || state.arena.entities.length === 0) {
-    return { ...state, arena: getOrCreateArena(state) }
+  let state = parsed as SaveState
+  const pet = state.arena?.pet
+  if (
+    !state.arena ||
+    !pet ||
+    typeof pet.mood !== 'number' ||
+    !pet.lastFedAt
+  ) {
+    const fresh = createInitialState()
+    return {
+      ...state,
+      arena: fresh.arena,
+    }
+  }
+  const arena = state.arena
+  if (!Array.isArray(arena.projectiles)) {
+    state = {
+      ...state,
+      arena: { ...arena, projectiles: [] },
+    }
+  }
+  const meta = state.meta
+  if (
+    Array.isArray(meta.achievements) &&
+    (!Array.isArray(meta.collectibles) || meta.collectibles.length === 0) &&
+    meta.achievements.length > 0
+  ) {
+    state = {
+      ...state,
+      meta: { ...meta, collectibles: [...meta.achievements] },
+    }
+  }
+  if (!('pendingBonusSpin' in state) || state.pendingBonusSpin === undefined) {
+    state = { ...state, pendingBonusSpin: null }
   }
   return state
 }
@@ -59,6 +91,19 @@ export function loadState(): Promise<SaveState> {
       resolve(createInitialState())
     }
   })
+}
+
+export function serializeState(state: SaveState): string {
+  return JSON.stringify(state)
+}
+
+export function restoreStateFromString(serialized: string): SaveState {
+  try {
+    const parsed = JSON.parse(serialized)
+    return restoreState(parsed)
+  } catch {
+    return createInitialState()
+  }
 }
 
 export function saveState(state: SaveState): Promise<void> {

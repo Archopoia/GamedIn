@@ -7,7 +7,6 @@
 (function () {
   const isDev = typeof chrome !== 'undefined' && chrome.runtime?.getManifest && !chrome.runtime.getManifest().update_url
   const LOG = (...args) => { if (isDev) console.log('[GamedIn Job Sites]', ...args) }
-  const PAGE_STATE_DEBUG_INTERVAL_MS = 5000
   let parser
   try {
     parser = (typeof window !== 'undefined' && window.GAMEDIN_JOB_PARSER) || {}
@@ -376,54 +375,6 @@
     return scrollHeight > 0 ? Math.round((window.scrollY / scrollHeight) * 100) : 0
   }
 
-  function debugPageState() {
-    if (!isDev) return
-    const ps = act.pageState
-    const scrollContainers = []
-    if (ps?.scrollContainerSelectors?.length) {
-      for (const sel of ps.scrollContainerSelectors) {
-        try {
-          const els = document.querySelectorAll(sel)
-          els.forEach((el) => {
-            if (el && el.scrollHeight > el.clientHeight) {
-              const sh = el.scrollHeight - el.clientHeight
-              const depth = sh > 0 ? Math.round((el.scrollTop / sh) * 100) : 0
-              scrollContainers.push({ sel, depth, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight })
-            }
-          })
-        } catch (_) {}
-      }
-    }
-    const cardSel = act.jobList?.cardSelector
-    const cards = cardSel ? document.querySelectorAll(cardSel) : []
-    const cardsWithId = []
-    cards.forEach((c, i) => {
-      if (i < 5) cardsWithId.push(getCardId(c))
-    })
-    const applySels = act.pageState?.applySelectors || ['button[aria-label*="Apply"]']
-    let applyFound = false
-    for (const sel of applySels) {
-      try {
-        const btns = document.querySelectorAll(sel)
-        for (const btn of btns) {
-          const rect = btn.getBoundingClientRect()
-          if (rect.top >= 0 && rect.top < window.innerHeight) { applyFound = true; break }
-        }
-        if (applyFound) break
-      } catch (_) {}
-    }
-    LOG('[PageState Debug]', {
-      scrollContainers: scrollContainers.length ? scrollContainers : 'none found',
-      windowScroll: { scrollY: window.scrollY, scrollHeight: document.documentElement.scrollHeight - window.innerHeight },
-      cardsFound: cards.length,
-      cardsWithIdSample: cardsWithId,
-      cardsInViewport: cardsInViewport.size,
-      cardsScrolledPast: cardsScrolledPast.size,
-      applyBtnInView: applyFound,
-      lastCardHovered: lastCardHovered ? (lastCardHovered.title || lastCardHovered.jobId || '—') : '—',
-    })
-  }
-
   function sendPageState() {
     const now = Date.now()
     const url = window.location.href
@@ -654,11 +605,6 @@
   // Periodic page state send
   setInterval(sendPageState, PAGE_STATE_INTERVAL_MS)
   sendPageState()
-
-  if (isDev) {
-    setInterval(debugPageState, PAGE_STATE_DEBUG_INTERVAL_MS)
-    setTimeout(debugPageState, 3000)
-  }
 
   LOG('Page element capture started', { site: site.id })
 })()

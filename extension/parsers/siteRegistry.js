@@ -104,6 +104,10 @@ const SITES = [
         companySelector: 'span.companyName, [data-testid="company-name"], [data-testid="inlineHeader-companyName"], .companyName',
         idAttr: 'data-jk',
       },
+      pageState: {
+        scrollContainerSelectors: ['.jobsearch-ResultsList', '.jobsearch-Results', '#resultsCol', '[class*="jobsearch-Results"]'],
+        applySelectors: ['button[data-testid="apply-button"]', '#apply-button', 'a[data-tn-element="applyButton"]', '.jobsearch-ApplyButton', 'button[aria-label*="Apply"]', 'a[href*="apply"]'],
+      },
       jobClicked: {
         linkSelector: 'a.tapItem, a[data-jk], a[href*="/viewjob"], a[href*="/rc/clk"], a[href*="jk="], a[href*="vjk="], a.jcs-JobTitle, [data-jk] a',
         cardSelector: '.job_seen_beacon, [data-jobkey], [data-jk], .jobsearch-SerpJobCard, .jobCard',
@@ -150,6 +154,10 @@ const SITES = [
         titleSelector: '.jobLink, [data-test="job-listing-title"], .job-title, h2',
         companySelector: '.jobEmpolyerName, .jobEmployerName, [data-test="job-listing-company"]',
         idAttr: 'data-job-id',
+      },
+      pageState: {
+        scrollContainerSelectors: ['#MainCol', '.JobsList', '[class*="JobsList"]', '[class*="job-list"]'],
+        applySelectors: ['button[data-test="apply-button"]', 'a[data-test="apply-button"]', 'button[aria-label*="Apply"]', 'a[href*="apply"]'],
       },
       jobClicked: {
         linkSelector: 'a.jobLink, a[href*="/job-details"], a[href*="/Job/"], [data-test="job-listing"] a',

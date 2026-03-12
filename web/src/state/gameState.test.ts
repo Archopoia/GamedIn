@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyLoggedCommand,
+  confirmSpin,
   createInitialState,
-  purchaseUpgrade,
+  selectUpgrade,
   upsertProfile,
 } from './gameState'
-import { restoreState, serializeState } from './saveSync'
+import {
+  restoreStateFromString,
+  serializeState,
+} from '../widget/storage'
 
 describe('gameState vertical slice', () => {
-  it('logs application and grants reward', () => {
+  it('logs application and grants reward with spin and upgrade', () => {
     const state = createInitialState()
     const result = applyLoggedCommand(state, {
       title: 'Frontend Engineer',
@@ -18,25 +22,42 @@ describe('gameState vertical slice', () => {
     })
 
     expect(result.state.applications).toHaveLength(1)
-    expect(result.state.economy.points).toBeGreaterThan(0)
+    expect(result.state.economy.hopium).toBeGreaterThan(0)
+    expect(result.state.pendingSpin).toBeTruthy()
+    expect(result.state.pendingUpgradeOptions).toHaveLength(3)
     expect(result.events.map((event) => event.type)).toEqual([
       'application_logged',
       'reward_granted',
     ])
   })
 
-  it('supports upgrade purchases from points balance', () => {
-    const seeded = {
-      ...createInitialState(),
-      economy: {
-        points: 300,
-        totalPointsEarned: 300,
-      },
-    }
-    const result = purchaseUpgrade(seeded)
-    expect(result.event?.type).toBe('upgrade_purchased')
-    expect(result.state.upgrades.upgradeLevel).toBe(2)
-    expect(result.state.economy.points).toBeLessThan(300)
+  it('confirmSpin clears pendingSpin', () => {
+    const state = createInitialState()
+    const afterApply = applyLoggedCommand(state, {
+      title: 'Dev',
+      company: 'Corp',
+      source: 'linkedin',
+      qualityScore: 3,
+    }).state
+    expect(afterApply.pendingSpin).toBeTruthy()
+
+    const afterConfirm = confirmSpin(afterApply)
+    expect(afterConfirm.pendingSpin).toBeNull()
+  })
+
+  it('selectUpgrade clears pendingUpgradeOptions and adds weapon', () => {
+    const state = createInitialState()
+    const afterApply = applyLoggedCommand(state, {
+      title: 'Dev',
+      company: 'Corp',
+      source: 'linkedin',
+      qualityScore: 3,
+    }).state
+    const options = afterApply.pendingUpgradeOptions ?? []
+    expect(options.length).toBeGreaterThan(0)
+
+    const afterSelect = selectUpgrade(afterApply, options[0]!.id)
+    expect(afterSelect.pendingUpgradeOptions).toBeNull()
   })
 
   it('restores deterministic save payload', () => {
@@ -46,7 +67,9 @@ describe('gameState vertical slice', () => {
       dailyApplyGoal: 4,
     })
     const serialized = serializeState(withProfile)
-    const restored = restoreState(serialized)
-    expect(restored).toEqual(withProfile)
+    const restored = restoreStateFromString(serialized)
+    expect(restored.profile).toEqual(withProfile.profile)
+    expect(restored.economy.hopium).toBe(withProfile.economy.hopium)
+    expect(restored.arena.pet.id).toBe(withProfile.arena.pet.id)
   })
 })

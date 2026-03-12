@@ -160,7 +160,27 @@
 <a name='L95'></a><a href='#L95'>95</a>
 <a name='L96'></a><a href='#L96'>96</a>
 <a name='L97'></a><a href='#L97'>97</a>
-<a name='L98'></a><a href='#L98'>98</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -259,31 +279,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export type ApplicationSource = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
 &nbsp;
-export type EntityVariant = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g'
-&nbsp;
-export interface ArenaEntity {
-  id: string
-  variant: EntityVariant
-  mood: number
-  lastBoostedAt: string | null
-  lastInteractedAt: string | null
-  x: number
-  facing: 1 | -1
-  orbAccumulated: number
-}
-&nbsp;
-export interface ArenaDebris {
-  id: string
-  x: number
-  entityId: string
-}
-&nbsp;
-export interface ArenaOrb {
-  id: string
-  x: number
-  amount: number
-  entityId: string
-}
+export type SpinOutcome = 'ghosted' | 'rejected' | 'interview' | 'offer'
+export type EnemyType =
+  | 'ghosted'
+  | 'rejection'
+  | 'fake_job'
+  | 'ats_filter'
+  | 'rent_due'
+  | 'despair'
+export type WeaponId = string
+export type UpgradeId = string
 &nbsp;
 export interface Profile {
   displayName: string
@@ -300,41 +305,64 @@ export interface ApplicationLog {
   createdAt: string
 }
 &nbsp;
-export interface EconomyState {
-  points: number
-  totalPointsEarned: number
+export interface CopePet {
+  id: string
+  mood: number
+  lastFedAt: string
 }
 &nbsp;
-export interface UnitState {
-  active: number
-  happiestMood: number
+export interface ArenaEnemy {
+  id: string
+  type: EnemyType
+  x: number
+  hp: number
 }
 &nbsp;
-export interface ProgressionState {
-  level: number
-  totalApplications: number
-  unlockedUpgradeTier: number
+export interface ArenaWeapon {
+  id: string
+  weaponId: WeaponId
+  x: number
+  lastFiredAt: number
 }
 &nbsp;
-export interface EngagementState {
-  streakDays: number
-  lastApplyDate: string | null
-  appliesToday: number
-  appliesDayKey: string
-  dailyRewardCap: number
-}
-&nbsp;
-export interface UpgradeState {
-  upgradeLevel: number
-  upgradeCost: number
+export interface ArenaProjectile {
+  id: string
+  x: number
+  vx: number
+  targetEnemyId: string
 }
 &nbsp;
 export interface ArenaState {
-  entities: ArenaEntity[]
-  debris: ArenaDebris[]
-  orbs: ArenaOrb[]
-  unlockedVariants: EntityVariant[]
-  arenaLevel: number
+  pet: CopePet
+  enemies: ArenaEnemy[]
+  weapons: ArenaWeapon[]
+  projectiles: ArenaProjectile[]
+  lastSpawnAt?: number
+}
+&nbsp;
+export interface RunState {
+  appliesToday: number
+  dayKey: string
+  completed: boolean
+}
+&nbsp;
+export interface SpinResult {
+  outcome: SpinOutcome
+  hopiumAwarded: number
+  timestamp: string
+}
+&nbsp;
+export interface UpgradeOption {
+  id: UpgradeId
+  label: string
+  type: 'weapon' | 'passive' | 'stat'
+}
+&nbsp;
+export interface MetaState {
+  achievements: string[]
+  collectibles: string[]
+  totalRunsCompleted: number
+  gotOfferReceived?: boolean
 }
 &nbsp;
 export interface TelemetryEvent {
@@ -346,13 +374,15 @@ export interface TelemetryEvent {
 export interface SaveState {
   profile: Profile
   applications: ApplicationLog[]
-  economy: EconomyState
-  units: UnitState
-  progression: ProgressionState
-  engagement: EngagementState
-  upgrades: UpgradeState
-  arena?: ArenaState
+  economy: { hopium: number; totalHopiumEarned: number }
+  engagement: { streakDays: number; lastApplyDate: string | null }
+  run: RunState
+  arena: ArenaState
+  meta: MetaState
   telemetryQueue: TelemetryEvent[]
+  pendingSpin: SpinResult | null
+  pendingUpgradeOptions: UpgradeOption[] | null
+  pendingBonusSpin: SpinResult | null
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -361,7 +391,7 @@ export interface SaveState {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-12T09:07:28.279Z
+                at 2026-03-12T11:04:13.538Z
             </div>
         <script src="../prettify.js"></script>
         <script>

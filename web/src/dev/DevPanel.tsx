@@ -4,7 +4,6 @@ import {
   applyLoggedCommand,
   createInitialState,
 } from '../state/gameState'
-import { clearState, saveState } from '../state/saveSync'
 import { toTelemetryEvent } from '../domain/events'
 import {
   generateTestApplication,
@@ -24,10 +23,15 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
     const input = generateTestApplication()
     setState((current: SaveState) => {
       const result = applyLoggedCommand(current, input)
-      const telemetry = result.events.map((e) => toTelemetryEvent(e, result.state))
+      const telemetry = result.events.map((e) =>
+        toTelemetryEvent(e, result.state),
+      )
       return {
         ...result.state,
-        telemetryQueue: [...result.state.telemetryQueue, ...telemetry].slice(-100),
+        telemetryQueue: [
+          ...result.state.telemetryQueue,
+          ...telemetry,
+        ].slice(-100),
       }
     })
     setMessage(`Dev: Added 1 test application (${input.title} @ ${input.company})`)
@@ -55,24 +59,20 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
     }
     next = {
       ...next,
-      economy: { points: 500, totalPointsEarned: 500 },
-      units: { active: 12, happiestMood: 85 },
-      upgrades: { upgradeLevel: 3, upgradeCost: 200 },
-      engagement: {
-        ...next.engagement,
-        streakDays: 7,
+      economy: { hopium: 500, totalHopiumEarned: 500 },
+      engagement: { ...next.engagement, streakDays: 7 },
+      run: {
+        ...next.run,
         appliesToday: 5,
-        dailyRewardCap: 10,
+        completed: true,
       },
     }
     setState(next)
-    saveState(next)
     setMessage('Dev: Seeded rich state')
   }
 
   const handleReset = () => {
     const fresh = createInitialState()
-    clearState()
     setState(fresh)
     setMessage('Dev: Reset to initial state')
   }

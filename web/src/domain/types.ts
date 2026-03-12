@@ -1,30 +1,15 @@
 export type ApplicationSource = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
 
-export type EntityVariant = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g'
-
-export interface ArenaEntity {
-  id: string
-  variant: EntityVariant
-  mood: number
-  lastBoostedAt: string | null
-  lastInteractedAt: string | null
-  x: number
-  facing: 1 | -1
-  orbAccumulated: number
-}
-
-export interface ArenaDebris {
-  id: string
-  x: number
-  entityId: string
-}
-
-export interface ArenaOrb {
-  id: string
-  x: number
-  amount: number
-  entityId: string
-}
+export type SpinOutcome = 'ghosted' | 'rejected' | 'interview' | 'offer'
+export type EnemyType =
+  | 'ghosted'
+  | 'rejection'
+  | 'fake_job'
+  | 'ats_filter'
+  | 'rent_due'
+  | 'despair'
+export type WeaponId = string
+export type UpgradeId = string
 
 export interface Profile {
   displayName: string
@@ -41,41 +26,64 @@ export interface ApplicationLog {
   createdAt: string
 }
 
-export interface EconomyState {
-  points: number
-  totalPointsEarned: number
+export interface CopePet {
+  id: string
+  mood: number
+  lastFedAt: string
 }
 
-export interface UnitState {
-  active: number
-  happiestMood: number
+export interface ArenaEnemy {
+  id: string
+  type: EnemyType
+  x: number
+  hp: number
 }
 
-export interface ProgressionState {
-  level: number
-  totalApplications: number
-  unlockedUpgradeTier: number
+export interface ArenaWeapon {
+  id: string
+  weaponId: WeaponId
+  x: number
+  lastFiredAt: number
 }
 
-export interface EngagementState {
-  streakDays: number
-  lastApplyDate: string | null
-  appliesToday: number
-  appliesDayKey: string
-  dailyRewardCap: number
-}
-
-export interface UpgradeState {
-  upgradeLevel: number
-  upgradeCost: number
+export interface ArenaProjectile {
+  id: string
+  x: number
+  vx: number
+  targetEnemyId: string
 }
 
 export interface ArenaState {
-  entities: ArenaEntity[]
-  debris: ArenaDebris[]
-  orbs: ArenaOrb[]
-  unlockedVariants: EntityVariant[]
-  arenaLevel: number
+  pet: CopePet
+  enemies: ArenaEnemy[]
+  weapons: ArenaWeapon[]
+  projectiles: ArenaProjectile[]
+  lastSpawnAt?: number
+}
+
+export interface RunState {
+  appliesToday: number
+  dayKey: string
+  completed: boolean
+}
+
+export interface SpinResult {
+  outcome: SpinOutcome
+  hopiumAwarded: number
+  timestamp: string
+}
+
+export interface UpgradeOption {
+  id: UpgradeId
+  label: string
+  type: 'weapon' | 'passive' | 'stat'
+}
+
+export interface MetaState {
+  achievements: string[]
+  collectibles: string[]
+  totalRunsCompleted: number
+  gotOfferReceived?: boolean
 }
 
 export interface TelemetryEvent {
@@ -87,11 +95,13 @@ export interface TelemetryEvent {
 export interface SaveState {
   profile: Profile
   applications: ApplicationLog[]
-  economy: EconomyState
-  units: UnitState
-  progression: ProgressionState
-  engagement: EngagementState
-  upgrades: UpgradeState
-  arena?: ArenaState
+  economy: { hopium: number; totalHopiumEarned: number }
+  engagement: { streakDays: number; lastApplyDate: string | null }
+  run: RunState
+  arena: ArenaState
+  meta: MetaState
   telemetryQueue: TelemetryEvent[]
+  pendingSpin: SpinResult | null
+  pendingUpgradeOptions: UpgradeOption[] | null
+  pendingBonusSpin: SpinResult | null
 }

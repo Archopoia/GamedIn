@@ -1,18 +1,12 @@
-import {
-  getOrCreateArena,
-  tickArenaSpawns,
-  variantForApplication,
-  unlockNextVariant,
-} from '../domain/arena'
-import { computeLevel, computeUpgradeTier } from '../domain/progression'
-import { computeReward, type RewardBreakdown } from '../domain/reward'
+import { checkAchievements, mergeAchievements } from '../domain/achievements'
+import { runSpin } from '../domain/spin'
+import { getRandomUpgradeOptions } from '../domain/upgrades'
 import type { DomainEvent } from '../domain/events'
 import type {
   ApplicationLog,
   ApplicationSource,
-  ArenaEntity,
+  ArenaWeapon,
   SaveState,
-  UpgradeState,
 } from '../domain/types'
 
 export interface ApplyCommandInput {
@@ -22,15 +16,14 @@ export interface ApplyCommandInput {
   qualityScore: 1 | 2 | 3 | 4 | 5
 }
 
+export interface PageStateForApply {
+  timeOnDetailSec?: number
+  lastCardHoverDurationSec?: number
+}
+
 export interface ApplyCommandResult {
   state: SaveState
   events: DomainEvent[]
-  reward: RewardBreakdown
-}
-
-const DEFAULT_UPGRADES: UpgradeState = {
-  upgradeLevel: 1,
-  upgradeCost: 80,
 }
 
 function todayKey(now: Date): string {
@@ -40,13 +33,22 @@ function todayKey(now: Date): string {
 function dayDiff(fromIso: string, toIso: string): number {
   const from = new Date(fromIso)
   const to = new Date(toIso)
-  const fromUtc = Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate())
-  const toUtc = Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate())
+  const fromUtc = Date.UTC(
+    from.getUTCFullYear(),
+    from.getUTCMonth(),
+    from.getUTCDate(),
+  )
+  const toUtc = Date.UTC(
+    to.getUTCFullYear(),
+    to.getUTCMonth(),
+    to.getUTCDate(),
+  )
   return Math.round((toUtc - fromUtc) / 86400000)
 }
 
 export function createInitialState(): SaveState {
   const key = todayKey(new Date())
+  const now = new Date().toISOString()
   return {
     profile: {
       displayName: '',
@@ -54,46 +56,32 @@ export function createInitialState(): SaveState {
       dailyApplyGoal: 3,
     },
     applications: [],
-    economy: {
-      points: 0,
-      totalPointsEarned: 0,
-    },
-    units: {
-      active: 1,
-      happiestMood: 50,
-    },
-    progression: {
-      level: 1,
-      totalApplications: 0,
-      unlockedUpgradeTier: 1,
-    },
-    engagement: {
-      streakDays: 0,
-      lastApplyDate: null,
+    economy: { hopium: 0, totalHopiumEarned: 0 },
+    engagement: { streakDays: 0, lastApplyDate: null },
+    run: {
       appliesToday: 0,
-      appliesDayKey: key,
-      dailyRewardCap: 5,
+      dayKey: key,
+      completed: false,
     },
-    upgrades: DEFAULT_UPGRADES,
     arena: {
-      entities: [
-        {
-          id: crypto.randomUUID(),
-          variant: 'a',
-          mood: 70,
-          lastBoostedAt: null,
-          lastInteractedAt: null,
-          x: 80,
-          facing: 1,
-          orbAccumulated: 0,
-        },
-      ],
-      debris: [],
-      orbs: [],
-      unlockedVariants: ['a'],
-      arenaLevel: 1,
+      pet: {
+        id: crypto.randomUUID(),
+        mood: 70,
+        lastFedAt: now,
+      },
+      enemies: [],
+      weapons: [],
+      projectiles: [],
+    },
+    meta: {
+      achievements: [],
+      collectibles: [],
+      totalRunsCompleted: 0,
     },
     telemetryQueue: [],
+    pendingSpin: null,
+    pendingUpgradeOptions: null,
+    pendingBonusSpin: null,
   }
 }
 
@@ -101,15 +89,13 @@ export function upsertProfile(
   state: SaveState,
   profile: SaveState['profile'],
 ): SaveState {
-  return {
-    ...state,
-    profile,
-  }
+  return { ...state, profile }
 }
 
 export function applyLoggedCommand(
   state: SaveState,
   input: ApplyCommandInput,
+  pageState?: PageStateForApply | null,
   now = new Date(),
 ): ApplyCommandResult {
   const application: ApplicationLog = {
@@ -122,229 +108,141 @@ export function applyLoggedCommand(
   }
 
   const currentDayKey = todayKey(now)
-  const isSameDay = state.engagement.appliesDayKey === currentDayKey
-  const nextAppliesToday = isSameDay ? state.engagement.appliesToday + 1 : 1
+  const isSameDay = state.run.dayKey === currentDayKey
+  const nextAppliesToday = isSameDay ? state.run.appliesToday + 1 : 1
 
   const streakDays = (() => {
-    if (!state.engagement.lastApplyDate) {
-      return 1
-    }
+    if (!state.engagement.lastApplyDate) return 1
     const gap = dayDiff(state.engagement.lastApplyDate, now.toISOString())
-    if (gap === 0) {
-      return state.engagement.streakDays
-    }
-    if (gap === 1) {
-      return state.engagement.streakDays + 1
-    }
+    if (gap === 0) return state.engagement.streakDays
+    if (gap === 1) return state.engagement.streakDays + 1
     return 1
   })()
 
-  const reward = computeReward(
-    input.qualityScore,
-    { ...state.engagement, appliesToday: nextAppliesToday },
-    state.upgrades,
-  )
-  const totalApplications = state.progression.totalApplications + 1
-  const level = computeLevel(totalApplications)
-  const unlockedUpgradeTier = computeUpgradeTier(level)
+  const spinResult = runSpin(pageState)
+  const upgradeOptions = getRandomUpgradeOptions(3)
 
-  const arena = getOrCreateArena(state)
-  const variant = variantForApplication(
-    input.source,
-    input.qualityScore,
-    arena.unlockedVariants,
-  )
-  const newEntities: ArenaEntity[] = []
-  for (let i = 0; i < reward.entityDelta; i++) {
-    const maxX = arena.entities.length > 0
-      ? Math.max(...arena.entities.map((a) => a.x)) + 60
-      : 80
-    newEntities.push({
-      id: crypto.randomUUID(),
-      variant,
-      mood: 60 + input.qualityScore * 8,
-      lastBoostedAt: null,
-      lastInteractedAt: null,
-      x: maxX + i * 50,
-      facing: 1,
-      orbAccumulated: 0,
-    })
-  }
-  const nextUnlocked = arena.unlockedVariants
-  const maybeUnlock = unlockNextVariant(nextUnlocked, totalApplications)
-  if (maybeUnlock && !nextUnlocked.includes(maybeUnlock)) {
-    nextUnlocked.push(maybeUnlock)
-  }
-
-  const nextArena: SaveState['arena'] = {
-    ...arena,
-    entities: [...arena.entities, ...newEntities].slice(0, 50),
-    debris: arena.debris ?? [],
-    orbs: arena.orbs ?? [],
-    unlockedVariants: [...nextUnlocked],
-  }
+  const runCompleted =
+    nextAppliesToday >= state.profile.dailyApplyGoal && isSameDay
 
   const nextState: SaveState = {
     ...state,
     applications: [application, ...state.applications].slice(0, 200),
     economy: {
-      points: state.economy.points + reward.pointsAwarded,
-      totalPointsEarned: state.economy.totalPointsEarned + reward.pointsAwarded,
-    },
-    units: {
-      active: nextArena.entities.length,
-      happiestMood: Math.min(100, state.units.happiestMood + input.qualityScore),
-    },
-    arena: nextArena,
-    progression: {
-      totalApplications,
-      level,
-      unlockedUpgradeTier,
+      hopium: state.economy.hopium + spinResult.hopiumAwarded,
+      totalHopiumEarned:
+        state.economy.totalHopiumEarned + spinResult.hopiumAwarded,
     },
     engagement: {
-      ...state.engagement,
-      appliesToday: nextAppliesToday,
-      appliesDayKey: currentDayKey,
-      lastApplyDate: now.toISOString(),
       streakDays,
+      lastApplyDate: now.toISOString(),
     },
+    run: {
+      appliesToday: nextAppliesToday,
+      dayKey: currentDayKey,
+      completed: runCompleted,
+    },
+    arena: {
+      ...state.arena,
+      pet: {
+        ...state.arena.pet,
+        mood: Math.min(100, state.arena.pet.mood + 15),
+        lastFedAt: now.toISOString(),
+      },
+    },
+    meta: {
+      ...state.meta,
+      totalRunsCompleted: runCompleted
+        ? state.meta.totalRunsCompleted + 1
+        : state.meta.totalRunsCompleted,
+      gotOfferReceived:
+        spinResult.outcome === 'offer' || state.meta.gotOfferReceived,
+    },
+    pendingSpin: spinResult,
+    pendingUpgradeOptions: upgradeOptions,
+    pendingBonusSpin: runCompleted ? runSpin(pageState) : null,
   }
 
+  const newAchievements = checkAchievements(nextState)
+  const finalState =
+    newAchievements.length > 0
+      ? mergeAchievements(nextState, newAchievements)
+      : nextState
+
   return {
-    state: nextState,
-    reward,
+    state: finalState,
     events: [
-      {
-        type: 'application_logged',
-        payload: { application },
-      },
+      { type: 'application_logged', payload: { application } },
       {
         type: 'reward_granted',
         payload: {
-          pointsAwarded: reward.pointsAwarded,
-          entityDelta: reward.entityDelta,
+          hopiumAwarded: spinResult.hopiumAwarded,
+          outcome: spinResult.outcome,
         },
       },
     ],
   }
 }
 
-export function purchaseUpgrade(state: SaveState): {
-  state: SaveState
-  event: DomainEvent | null
-} {
-  if (state.economy.points < state.upgrades.upgradeCost) {
-    return { state, event: null }
-  }
+export function confirmSpin(state: SaveState): SaveState {
+  return { ...state, pendingSpin: null }
+}
 
-  const nextLevel = state.upgrades.upgradeLevel + 1
-  const nextState: SaveState = {
+export function confirmBonusSpin(state: SaveState): SaveState {
+  const bonus = state.pendingBonusSpin
+  if (!bonus) return { ...state, pendingBonusSpin: null }
+  return {
     ...state,
+    pendingBonusSpin: null,
     economy: {
-      ...state.economy,
-      points: state.economy.points - state.upgrades.upgradeCost,
-    },
-    upgrades: {
-      upgradeLevel: nextLevel,
-      upgradeCost: Math.round(state.upgrades.upgradeCost * 1.8),
-    },
-  }
-
-  return {
-    state: nextState,
-    event: {
-      type: 'upgrade_purchased',
-      payload: {
-        upgrade: 'facility',
-        newLevel: nextLevel,
-      },
+      hopium: state.economy.hopium + bonus.hopiumAwarded,
+      totalHopiumEarned: state.economy.totalHopiumEarned + bonus.hopiumAwarded,
     },
   }
 }
 
-export function setDailyRewardCap(state: SaveState, cap: number): SaveState {
-  return {
-    ...state,
-    engagement: {
-      ...state.engagement,
-      dailyRewardCap: Math.max(1, Math.min(cap, 20)),
-    },
-  }
-}
-
-export function interactEntity(state: SaveState, entityId: string): SaveState {
-  const arena = getOrCreateArena(state)
-  const entities = arena.entities.map((a) =>
-    a.id === entityId
-      ? { ...a, mood: Math.min(100, a.mood + 10), lastInteractedAt: new Date().toISOString() }
-      : a,
-  )
-  return { ...state, arena: { ...arena, entities } }
-}
-
-export function boostEntity(state: SaveState, entityId: string): SaveState {
-  const arena = getOrCreateArena(state)
-  const entities = arena.entities.map((a) =>
-    a.id === entityId
-      ? { ...a, mood: Math.min(100, a.mood + 15), lastBoostedAt: new Date().toISOString() }
-      : a,
-  )
-  return { ...state, arena: { ...arena, entities } }
-}
-
-export function clearDebris(state: SaveState, debrisId: string): SaveState {
-  const arena = getOrCreateArena(state)
-  const debrisItem = arena.debris.find((d) => d.id === debrisId)
-  if (!debrisItem) return state
-  const debris = arena.debris.filter((d) => d.id !== debrisId)
-  const entities = arena.entities.map((a) =>
-    a.id === debrisItem.entityId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,
-  )
-  const pointsGain = 2
-  return {
-    ...state,
-    arena: { ...arena, debris, entities },
-    economy: {
-      points: state.economy.points + pointsGain,
-      totalPointsEarned: state.economy.totalPointsEarned + pointsGain,
-    },
-  }
-}
-
-export function collectOrb(state: SaveState, orbId: string): SaveState {
-  const arena = getOrCreateArena(state)
-  const orb = arena.orbs.find((c) => c.id === orbId)
-  if (!orb) return state
-  const orbs = arena.orbs.filter((c) => c.id !== orbId)
-  return {
-    ...state,
-    arena: { ...arena, orbs },
-    economy: {
-      points: state.economy.points + orb.amount,
-      totalPointsEarned: state.economy.totalPointsEarned + orb.amount,
-    },
-  }
-}
-
-export function tickArenaOrbs(
+export function selectUpgrade(
   state: SaveState,
-  elapsedMs: number,
-  entityPositions?: Record<string, number>,
+  optionId: string,
 ): SaveState {
-  const arena = getOrCreateArena(state)
-  const { arena: nextArena } = tickArenaSpawns(arena, elapsedMs, entityPositions)
-  return { ...state, arena: nextArena }
+  const options = state.pendingUpgradeOptions ?? []
+  const chosen = options.find((o) => o.id === optionId)
+  if (!chosen) return { ...state, pendingUpgradeOptions: null }
+
+  let nextArena = state.arena
+  if (chosen.type === 'weapon') {
+    const weapon: ArenaWeapon = {
+      id: crypto.randomUUID(),
+      weaponId: chosen.id,
+      x: 100,
+      lastFiredAt: Date.now(),
+    }
+    nextArena = {
+      ...state.arena,
+      weapons: [...state.arena.weapons, weapon].slice(-20),
+    }
+  }
+
+  return {
+    ...state,
+    arena: nextArena,
+    pendingUpgradeOptions: null,
+  }
 }
 
-export function updateEntityPosition(
-  state: SaveState,
-  entityId: string,
-  x: number,
-  facing: 1 | -1,
-): SaveState {
-  const arena = getOrCreateArena(state)
-  const entities = arena.entities.map((a) =>
-    a.id === entityId ? { ...a, x, facing } : a,
-  )
-  return { ...state, arena: { ...arena, entities } }
+export function checkDailyReset(state: SaveState, now = new Date()): SaveState {
+  const key = todayKey(now)
+  if (state.run.dayKey === key) return state
+  return {
+    ...state,
+    run: {
+      appliesToday: 0,
+      dayKey: key,
+      completed: false,
+    },
+  }
+}
+
+export function setDailyRewardCap(state: SaveState, _cap: number): SaveState {
+  return state
 }

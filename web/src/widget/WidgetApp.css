@@ -21,13 +21,7 @@
   background: transparent;
 }
 
-.gamedin-widget-popup-open {
-  padding-top: 240px;
-}
-
-.gamedin-widget-popup-open.gamedin-widget-pagedata-open {
-  padding-top: 340px;
-}
+/* padding-top set dynamically via inline style to match popup content height */
 
 .gamedin-widget-embedded .gamedin-widget-inner {
   flex: 1;
@@ -121,7 +115,7 @@
   left: 0;
   width: 280px;
   max-width: 280px;
-  max-height: 420px;
+  max-height: 520px;
   overflow-y: auto;
   padding: 12px 16px;
   background: #0d1f18;
@@ -130,6 +124,7 @@
   border-radius: 8px 8px 0 0;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
+  /* Height grows with content; scrolls only when exceeding max-height */
 }
 
 .gamedin-widget-form h3 {
@@ -197,6 +192,27 @@
   white-space: nowrap;
 }
 
+.gamedin-widget-collectibles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.gamedin-widget-collectibles-label {
+  color: #94ac9d;
+  font-size: 12px;
+}
+
+.gamedin-widget-collectible {
+  padding: 2px 8px;
+  background: #2f5345;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6ed6a3;
+}
+
 .gamedin-widget-feed-compact {
   max-height: none;
 }
@@ -247,6 +263,55 @@
   color: #94ac9d;
   font-size: 12px;
   margin: 0;
+}
+
+.gamedin-widget-empty-state {
+  color: #94ac9d;
+  font-size: 12px;
+  margin: 8px 0;
+  padding: 8px 0;
+  border-top: 1px solid #2f5345;
+}
+
+.gamedin-widget-onboarding {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: #1c382f;
+  border: 1px solid #2f5345;
+  border-radius: 4px;
+}
+
+.gamedin-widget-onboarding-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6ed6a3;
+}
+
+.gamedin-widget-onboarding-list {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 11px;
+  color: #cfffe3;
+  line-height: 1.5;
+}
+
+.gamedin-widget-onboarding-list li {
+  margin-bottom: 4px;
+}
+
+.gamedin-widget-onboarding-dismiss {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: #2f5345;
+  border: 1px solid #6ed6a3;
+  border-radius: 4px;
+  color: #6ed6a3;
+  cursor: pointer;
+}
+
+.gamedin-widget-onboarding-dismiss:hover {
+  background: #3d6a5a;
 }
 
 .gamedin-widget-arena-wrap {
@@ -351,4 +416,124 @@
   overflow-wrap: break-word;
   display: block;
   max-width: 100%;
+}
+
+/* Spin reveal modal */
+.spin-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.spin-reveal-card {
+  background: #0d1f18;
+  border: 1px solid #2f5345;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 200px;
+  text-align: center;
+}
+
+.spin-reveal-bonus-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #6ed6a3;
+}
+
+.spin-reveal-outcome {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #6ed6a3;
+  text-transform: capitalize;
+}
+
+.spin-reveal-copy {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #94ac9d;
+}
+
+.spin-reveal-hopium {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #cfffe3;
+}
+
+.spin-reveal-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  background: #2d5a27;
+  border: 1px solid #2f5345;
+  border-radius: 4px;
+  color: #e8fff2;
+  cursor: pointer;
+}
+
+/* Upgrade picker modal */
+.upgrade-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.upgrade-picker-card {
+  background: #0d1f18;
+  border: 1px solid #2f5345;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 260px;
+}
+
+.upgrade-picker-card h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #6ed6a3;
+}
+
+.upgrade-picker-hint {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #94ac9d;
+}
+
+.upgrade-picker-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upgrade-picker-opt {
+  padding: 10px 12px;
+  font-size: 12px;
+  background: #1c382f;
+  border: 1px solid #2f5345;
+  border-radius: 4px;
+  color: #e8fff2;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.upgrade-picker-opt:hover {
+  background: #2d5a27;
+  border-color: #6ed6a3;
+}
+
+.upgrade-picker-label {
+  font-weight: 700;
+}
+
+.upgrade-picker-type {
+  font-size: 10px;
+  color: #94ac9d;
 }

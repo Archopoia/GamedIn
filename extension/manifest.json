@@ -16,15 +16,7 @@
     "*://boards.greenhouse.io/*",
     "*://jobs.greenhouse.io/*",
     "*://jobs.lever.co/*",
-    "*://*.lever.co/*",
-    "http://localhost/*",
-    "http://127.0.0.1/*",
-    "https://localhost/*",
-    "https://127.0.0.1/*",
-    "*://*.vercel.app/*",
-    "*://*.netlify.app/*",
-    "*://*.gamedin.app/*",
-    "*://gamedin.app/*"
+    "*://*.lever.co/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -69,20 +61,6 @@
         "parsers/jobParser.js",
         "content-job-sites.js"
       ],
-      "run_at": "document_end"
-    },
-    {
-      "matches": [
-        "http://localhost/*",
-        "http://127.0.0.1/*",
-        "https://localhost/*",
-        "https://127.0.0.1/*",
-        "*://*.vercel.app/*",
-        "*://*.netlify.app/*",
-        "*://*.gamedin.app/*",
-        "*://gamedin.app/*"
-      ],
-      "js": ["content-gamedin.js"],
       "run_at": "document_end"
     }
   ]
