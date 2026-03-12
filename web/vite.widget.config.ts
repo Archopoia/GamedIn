@@ -2,8 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
+const WIDGET_VERSION = '2'
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'widget-cache-bust',
+      transformIndexHtml(html) {
+        return html.replace(/src="\.\/(widget\.js)"/, `src="./$1?v=${WIDGET_VERSION}"`)
+      },
+    },
+  ],
   base: './',
   build: {
     outDir: resolve(__dirname, '../extension/widget'),

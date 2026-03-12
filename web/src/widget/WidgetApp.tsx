@@ -14,6 +14,7 @@ import {
   upsertProfile,
 } from '../state/gameState'
 import { Arena } from '../game/Arena'
+import { PageDataPanel, type PageState } from '../game/PageDataPanel'
 import { generateTestApplication, generateTestApplications } from '../dev/fixtures'
 import { loadState, saveState } from './storage'
 import type { SaveState } from '../domain/types'
@@ -21,9 +22,10 @@ import './WidgetApp.css'
 
 const PENDING_LOGS_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
+const PAGE_STATE_KEY = 'gamedin.pageState'
 const POLL_MS = 1500
 
-type TabId = 'profile' | 'shop' | 'stats' | 'dev'
+type TabId = 'profile' | 'shop' | 'stats' | 'pagedata' | 'dev'
 
 const isWidgetDevMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === '1'
 
@@ -55,6 +57,7 @@ export function WidgetApp() {
   const [activeTab, setActiveTab] = useState<TabId | null>(null)
   const [profileInput, setProfileInput] = useState({ displayName: '', preferredRoles: '', dailyApplyGoal: '3', cap: '5' })
   const [activity, setActivity] = useState<ActivityEvent[]>([])
+  const [pageState, setPageState] = useState<PageState | null>(null)
 
   useEffect(() => {
     loadState().then((s) => {
@@ -126,10 +129,11 @@ export function WidgetApp() {
   const fetchActivity = useCallback(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return
     try {
-      chrome.storage.local.get(ACTIVITY_KEY, (result: Record<string, unknown>) => {
+      chrome.storage.local.get([ACTIVITY_KEY, PAGE_STATE_KEY], (result: Record<string, unknown>) => {
         if (chrome?.runtime?.lastError?.message?.includes('Extension context invalidated')) return
         const act = (result?.[ACTIVITY_KEY] as ActivityEvent[]) || []
         setActivity(Array.isArray(act) ? act : [])
+        setPageState((result?.[PAGE_STATE_KEY] as PageState) ?? null)
       })
     } catch {
       /* extension context invalidated */
@@ -137,7 +141,13 @@ export function WidgetApp() {
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'stats') fetchActivity()
+    if (activeTab === 'stats' || activeTab === 'pagedata') fetchActivity()
+  }, [activeTab, fetchActivity])
+
+  useEffect(() => {
+    if (activeTab !== 'pagedata') return
+    const id = setInterval(fetchActivity, 1000)
+    return () => clearInterval(id)
   }, [activeTab, fetchActivity])
 
   const sendResize = useCallback((h: number) => {
@@ -149,7 +159,8 @@ export function WidgetApp() {
   }, [])
 
   useLayoutEffect(() => {
-    sendResize(activeTab ? 420 : 180)
+    const h = activeTab === 'pagedata' ? 520 : activeTab ? 420 : 180
+    sendResize(h)
   }, [activeTab, sendResize])
 
   const onTabMouseDown = useCallback(() => {
@@ -272,7 +283,7 @@ export function WidgetApp() {
   const recent = [...activity].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 4)
 
   return (
-    <div className={`gamedin-widget gamedin-widget-embedded ${activeTab ? 'gamedin-widget-popup-open' : ''}`}>
+    <div className={`gamedin-widget gamedin-widget-embedded ${activeTab ? 'gamedin-widget-popup-open' : ''} ${activeTab === 'pagedata' ? 'gamedin-widget-pagedata-open' : ''}`}>
       <div className="gamedin-widget-inner">
       <div className="gamedin-widget-bar-wrap">
       {activeTab && (
@@ -297,6 +308,11 @@ export function WidgetApp() {
               <h3>Shop</h3>
               <p>Upgrade Lv{state.upgrades.upgradeLevel} · Next: {state.upgrades.upgradeCost} pts</p>
               <button type="button" onClick={handleUpgradePurchase}>Buy upgrade</button>
+            </div>
+          )}
+          {activeTab === 'pagedata' && (
+            <div className="gamedin-widget-form gamedin-widget-form-inline">
+              <PageDataPanel pageState={pageState} onRefresh={fetchActivity} />
             </div>
           )}
           {activeTab === 'stats' && (
@@ -360,7 +376,7 @@ export function WidgetApp() {
           </span>
         </div>
         <div className="gamedin-widget-tabs">
-          {(['profile', 'shop', 'stats', ...(isWidgetDevMode ? ['dev'] : [])] as TabId[]).map((tab) => (
+          {(['profile', 'shop', 'stats', 'pagedata', ...(isWidgetDevMode ? ['dev'] : [])] as TabId[]).map((tab) => (
             <button
               key={tab}
               type="button"

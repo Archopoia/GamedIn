@@ -5,7 +5,8 @@
  * when the extension is reloaded while the page is open.
  */
 
-const LOG = (...args) => console.log('[GamedIn Game]', ...args)
+const isDev = typeof chrome !== 'undefined' && chrome.runtime?.getManifest && !chrome.runtime.getManifest().update_url
+const LOG = (...args) => { if (isDev) console.log('[GamedIn Game]', ...args) }
 
 const STORAGE_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'

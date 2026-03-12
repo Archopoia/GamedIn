@@ -9,8 +9,9 @@ const STORAGE_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
 const PAGE_STATE_KEY = 'gamedin.pageState'
 const ACTIVITY_MAX = 200
+const isDev = !chrome.runtime.getManifest().update_url
 
-LOG('Background script loaded')
+if (isDev) LOG('Background script loaded')
 
 function pushActivity(entry) {
   chrome.storage.local.get(ACTIVITY_KEY, (result) => {
@@ -21,17 +22,19 @@ function pushActivity(entry) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  LOG('onMessage received', { type: message?.type, sender: sender?.tab?.url || sender?.url })
+  if (isDev && message?.type !== 'GAMEDIN_PAGE_STATE') {
+    LOG('onMessage received', { type: message?.type, sender: sender?.tab?.url || sender?.url })
+  }
   if (message.type === 'GAMEDIN_APPLY_DETECTED') {
     const { title, company, source } = message.payload
-    LOG('GAMEDIN_APPLY_DETECTED: fetching current pending')
+    if (isDev) LOG('GAMEDIN_APPLY_DETECTED: fetching current pending')
     chrome.storage.local.get(STORAGE_KEY, (result) => {
       const pending = result[STORAGE_KEY] || []
       const entry = { title, company, source: source || 'linkedin', timestamp: Date.now() }
       pending.push(entry)
-      LOG('GAMEDIN_APPLY_DETECTED: storing', { pendingCount: pending.length, entry })
+      if (isDev) LOG('GAMEDIN_APPLY_DETECTED: storing', { pendingCount: pending.length, entry })
       chrome.storage.local.set({ [STORAGE_KEY]: pending }, () => {
-        LOG('GAMEDIN_APPLY_DETECTED: stored successfully')
+        if (isDev) LOG('GAMEDIN_APPLY_DETECTED: stored successfully')
         sendResponse({ ok: true })
       })
     })
@@ -40,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GAMEDIN_ACTIVITY') {
     const payload = message.payload || {}
     pushActivity({ type: payload.event, ...payload })
-    LOG('GAMEDIN_ACTIVITY', payload.event, payload)
+    if (isDev) LOG('GAMEDIN_ACTIVITY', payload.event, payload)
     return false
   }
   if (message.type === 'GAMEDIN_PAGE_STATE') {

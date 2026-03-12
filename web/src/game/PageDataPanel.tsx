@@ -9,10 +9,12 @@ export interface PageState {
   timestamp?: number
   receivedAt?: number
   timeOnDetailSec?: number
+  currentJobId?: string
+  totalTimeOnDetailSec?: number
   timeOnListSec?: number
   tabVisible?: boolean
   scrollDepthPercent?: number
-  maxScrollReached?: number
+  totalScrollPx?: number
   cardsInViewCount?: number
   cardsInViewIds?: string[]
   lastCardHovered?: { jobId: string; title: string; company: string } | null
@@ -41,9 +43,6 @@ export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
   return (
     <div className="panel page-data-panel">
       <h2>Page Elements (Live)</h2>
-      <p className="page-data-hint">
-        Raw metrics from the current job site tab. Open LinkedIn, Indeed, or another supported site in another tab and browse; data updates every ~2s.
-      </p>
       <button type="button" className="stats-refresh" onClick={onRefresh}>
         Refresh
       </button>
@@ -54,37 +53,40 @@ export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
         </p>
       ) : (
         <dl className="page-data-grid">
-          <dt>Site</dt>
+          <dt title="Job site detected (LinkedIn, Indeed, Glassdoor, etc.)">Site</dt>
           <dd>{pageState.site ?? '—'}</dd>
 
-          <dt>Last updated</dt>
+          <dt title="When the last page state update was received from the extension">Last updated</dt>
           <dd>{formatAge(pageState.receivedAt ?? pageState.timestamp)}</dd>
 
-          <dt>Tab visible</dt>
+          <dt title="Whether the job site tab is visible (not minimized or in background)">Tab visible</dt>
           <dd>{pageState.tabVisible == null ? '—' : pageState.tabVisible ? 'Yes' : 'No'}</dd>
 
-          <dt>Time on job detail (sec)</dt>
+          <dt title="Seconds spent viewing this job after clicking it">Time on job detail (sec)</dt>
           <dd>{pageState.timeOnDetailSec ?? '—'}</dd>
 
-          <dt>Time on list (sec)</dt>
-          <dd>{pageState.timeOnListSec ?? '—'}</dd>
+          <dt title="Job ID of the job you're currently viewing">Current job</dt>
+          <dd>{pageState.currentJobId ? <code className="page-data-ids">{pageState.currentJobId}</code> : '—'}</dd>
 
-          <dt>Scroll depth (%)</dt>
+          <dt title="Total seconds on all job details this session (cumulative)">Total time on details (sec)</dt>
+          <dd>{pageState.totalTimeOnDetailSec ?? '—'}</dd>
+
+          <dt title="How far down the page you've scrolled (0% = top, 100% = bottom)">Scroll depth (%)</dt>
           <dd>{pageState.scrollDepthPercent ?? '—'}</dd>
 
-          <dt>Max scroll reached (%)</dt>
-          <dd>{pageState.maxScrollReached ?? '—'}</dd>
+          <dt title="Cumulative pixels scrolled this session (all scroll containers)">Total scroll (px)</dt>
+          <dd>{pageState.totalScrollPx ?? '—'}</dd>
 
-          <dt>Cards in viewport</dt>
+          <dt title="Number of job cards currently visible in the viewport">Cards in viewport</dt>
           <dd>{pageState.cardsInViewCount ?? '—'}</dd>
 
-          <dt>Cards scrolled past</dt>
+          <dt title="Number of unique job cards that have scrolled out of view (above the viewport). Cards you've passed by while scrolling down.">Cards scrolled past</dt>
           <dd>{pageState.cardsScrolledPastCount ?? '—'}</dd>
 
-          <dt>Apply button in view</dt>
+          <dt title="Whether the apply button is visible on screen">Apply button in view</dt>
           <dd>{pageState.applyBtnInView == null ? '—' : pageState.applyBtnInView ? 'Yes' : 'No'}</dd>
 
-          <dt>Last card hovered</dt>
+          <dt title="Most recent job card you hovered over in the list (without clicking)">Last card hovered</dt>
           <dd>
             {pageState.lastCardHovered ? (
               <span title={pageState.lastCardHovered.company}>
@@ -95,12 +97,12 @@ export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
             )}
           </dd>
 
-          <dt>Hover duration (sec)</dt>
+          <dt title="Seconds you hovered over a job card in the list (without clicking to open it)">Hover duration (sec)</dt>
           <dd>{pageState.lastCardHoverDurationSec ?? '—'}</dd>
 
           {pageState.cardsInViewIds && pageState.cardsInViewIds.length > 0 && (
             <>
-              <dt>Card IDs in view</dt>
+              <dt title="Job IDs of cards currently visible in the viewport">Card IDs in view</dt>
               <dd>
                 <code className="page-data-ids">{pageState.cardsInViewIds.slice(0, 10).join(', ')}</code>
                 {pageState.cardsInViewIds.length > 10 && (

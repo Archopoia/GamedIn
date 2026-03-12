@@ -5,7 +5,9 @@
  */
 
 (function () {
-  const LOG = (...args) => console.log('[GamedIn Job Sites]', ...args)
+  const isDev = typeof chrome !== 'undefined' && chrome.runtime?.getManifest && !chrome.runtime.getManifest().update_url
+  const LOG = (...args) => { if (isDev) console.log('[GamedIn Job Sites]', ...args) }
+  const PAGE_STATE_DEBUG_INTERVAL_MS = 5000
   let parser
   try {
     parser = (typeof window !== 'undefined' && window.GAMEDIN_JOB_PARSER) || {}
@@ -36,7 +38,7 @@
       const iframe = document.createElement('iframe')
       iframe.id = 'gamedin-widget-iframe'
       const isUnpacked = !chrome.runtime.getManifest().update_url
-      iframe.src = chrome.runtime.getURL('widget/widget.html' + (isUnpacked ? '?dev=1' : ''))
+      iframe.src = chrome.runtime.getURL('widget/widget.html' + (isUnpacked ? '?dev=1&v=2' : '?v=2'))
       iframe.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:100%;border:none;pointer-events:auto;'
       wrap.appendChild(iframe)
       document.body.appendChild(wrap)
@@ -249,23 +251,45 @@
 
     if (act.jobClicked) {
       const jc = act.jobClicked
+      const jobIdAttrs = [act.jobList?.idAttr, 'data-jk', 'data-jobkey', 'data-job-id', 'data-occludable-job-id'].filter(Boolean)
+      function getJobIdFromEl(el) {
+        if (!el) return ''
+        for (const a of jobIdAttrs) {
+          const v = el.getAttribute?.(a)
+          if (v) return v
+        }
+        return ''
+      }
+      function getText(sel, root) {
+        if (!root || !sel) return ''
+        const parts = sel.split(',').map((s) => s.trim())
+        for (const p of parts) {
+          try {
+            const el = root.querySelector(p)
+            if (el) {
+              const t = (el.textContent || '').trim().slice(0, 80)
+              if (t) return t
+            }
+          } catch (_) {}
+        }
+        return ''
+      }
       document.addEventListener(
         'click',
         (e) => {
           const link = e.target.closest?.(jc.linkSelector)
           if (!link) return
           const href = link.getAttribute('href') || ''
+          let jobId = ''
           const jobIdMatch = href.match(jc.jobIdPattern || /$/)
-          const jobId = jobIdMatch ? (jobIdMatch[1] || jobIdMatch[2] || '') : ''
-          const card = link.closest?.(jc.cardSelector)
-          let title = ''
-          let company = ''
-          if (card) {
-            const tEl = card.querySelector(jc.titleSelector)
-            const cEl = card.querySelector(jc.companySelector)
-            if (tEl) title = (tEl.textContent || '').trim().slice(0, 80)
-            if (cEl) company = (cEl.textContent || '').trim().slice(0, 80)
-          }
+          if (jobIdMatch) jobId = (jobIdMatch[1] || jobIdMatch[2] || jobIdMatch[3] || '').trim()
+          const card = link.closest?.(jc.cardSelector) || link.closest?.('[data-jk]') || link.closest?.('[data-jobkey]') || link.closest?.('[data-occludable-job-id]') || link.parentElement?.closest?.(jc.cardSelector)
+          if (!jobId && card) jobId = getJobIdFromEl(card)
+          if (!jobId) jobId = getJobIdFromEl(link)
+          const root = card || link.parentElement
+          let title = getText(jc.titleSelector, root)
+          if (!title && link) title = (link.textContent || '').trim().slice(0, 80)
+          let company = getText(jc.companySelector, root)
           if (jobId || title) {
             const key = `click-${jobId || title}`
             const now = Date.now()
@@ -289,7 +313,10 @@
 
   let lastUrlChangeTime = Date.now()
   let lastUrl = window.location.href
-  let maxScrollReached = 0
+  let totalTimeOnDetailSec = 0
+  let totalScrollPx = 0
+  let lastWindowScrollY = 0
+  const scrollContainerLastTop = new WeakMap()
   let lastCardHovered = null
   let lastCardHoverStart = 0
   let lastCardHoverDurationSec = 0
@@ -297,20 +324,104 @@
   let cardsInViewport = new Set()
   let applyBtnInView = false
 
-  function isOnDetailPage() {
+  function isDetailUrl(url) {
+    try {
+      const act = site.activity || {}
+      if (act.search?.paramJobId) {
+        const u = new URL(url)
+        if (u.searchParams.get(act.search.paramJobId)) return true
+      }
+      if (act.jobViewed?.urlPattern && url.match(act.jobViewed.urlPattern)) return true
+    } catch (_) {}
+    return false
+  }
+
+  function getCurrentJobId() {
     const url = window.location.href
     const act = site.activity || {}
     if (act.search?.paramJobId) {
       try {
         const u = new URL(url)
-        const jobId = u.searchParams.get(act.search.paramJobId)
-        if (jobId) return true
+        const id = u.searchParams.get(act.search.paramJobId)
+        if (id) return id
       } catch (_) {}
     }
-    if (act.jobViewed?.urlPattern && url.match(act.jobViewed.urlPattern)) {
-      return true
+    const m = url.match(act.jobViewed?.urlPattern || /$/)
+    if (m) return (m[1] || m[2] || m[3] || '').trim()
+    return ''
+  }
+
+  function isOnDetailPage() {
+    return !!getCurrentJobId()
+  }
+
+  function getScrollDepth() {
+    let maxDepth = 0
+    const ps = act.pageState
+    if (ps?.scrollContainerSelectors?.length) {
+      for (const sel of ps.scrollContainerSelectors) {
+        try {
+          document.querySelectorAll(sel).forEach((el) => {
+            if (el && el.scrollHeight > el.clientHeight) {
+              const sh = el.scrollHeight - el.clientHeight
+              const depth = sh > 0 ? Math.round((el.scrollTop / sh) * 100) : 0
+              if (depth > maxDepth) maxDepth = depth
+            }
+          })
+        } catch (_) {}
+      }
+      if (maxDepth > 0) return maxDepth
     }
-    return false
+    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
+    return scrollHeight > 0 ? Math.round((window.scrollY / scrollHeight) * 100) : 0
+  }
+
+  function debugPageState() {
+    if (!isDev) return
+    const ps = act.pageState
+    const scrollContainers = []
+    if (ps?.scrollContainerSelectors?.length) {
+      for (const sel of ps.scrollContainerSelectors) {
+        try {
+          const els = document.querySelectorAll(sel)
+          els.forEach((el) => {
+            if (el && el.scrollHeight > el.clientHeight) {
+              const sh = el.scrollHeight - el.clientHeight
+              const depth = sh > 0 ? Math.round((el.scrollTop / sh) * 100) : 0
+              scrollContainers.push({ sel, depth, scrollHeight: el.scrollHeight, clientHeight: el.clientHeight })
+            }
+          })
+        } catch (_) {}
+      }
+    }
+    const cardSel = act.jobList?.cardSelector
+    const cards = cardSel ? document.querySelectorAll(cardSel) : []
+    const cardsWithId = []
+    cards.forEach((c, i) => {
+      if (i < 5) cardsWithId.push(getCardId(c))
+    })
+    const applySels = act.pageState?.applySelectors || ['button[aria-label*="Apply"]']
+    let applyFound = false
+    for (const sel of applySels) {
+      try {
+        const btns = document.querySelectorAll(sel)
+        for (const btn of btns) {
+          const rect = btn.getBoundingClientRect()
+          if (rect.top >= 0 && rect.top < window.innerHeight) { applyFound = true; break }
+        }
+        if (applyFound) break
+      } catch (_) {}
+    }
+    LOG('[PageState Debug]', {
+      scrollContainers: scrollContainers.length ? scrollContainers : 'none found',
+      windowScroll: { scrollY: window.scrollY, scrollHeight: document.documentElement.scrollHeight - window.innerHeight },
+      cardsFound: cards.length,
+      cardsWithIdSample: cardsWithId,
+      cardsInViewport: cardsInViewport.size,
+      cardsScrolledPast: cardsScrolledPast.size,
+      applyBtnInView: applyFound,
+      lastCardHovered: lastCardHovered ? (lastCardHovered.title || lastCardHovered.jobId || '—') : '—',
+    })
   }
 
   function sendPageState() {
@@ -319,10 +430,7 @@
     const onDetail = isOnDetailPage()
     const timeOnPageSec = Math.round((now - lastUrlChangeTime) / 1000)
 
-    const scrollHeight = document.documentElement.scrollHeight - window.innerHeight
-    const scrollDepth = scrollHeight > 0 ? Math.round((window.scrollY / scrollHeight) * 100) : 0
-    if (scrollDepth > maxScrollReached) maxScrollReached = scrollDepth
-
+    const scrollDepth = getScrollDepth()
     const hoverDurationSec = lastCardHoverStart > 0 ? Math.round((now - lastCardHoverStart) / 1000) : lastCardHoverDurationSec
 
     try {
@@ -332,10 +440,12 @@
           site: site.id,
           timestamp: now,
           timeOnDetailSec: onDetail ? timeOnPageSec : 0,
+          currentJobId: onDetail ? getCurrentJobId() : '',
+          totalTimeOnDetailSec: totalTimeOnDetailSec + (onDetail ? timeOnPageSec : 0),
           timeOnListSec: onDetail ? 0 : timeOnPageSec,
           tabVisible: document.visibilityState === 'visible',
           scrollDepthPercent: scrollDepth,
-          maxScrollReached,
+          totalScrollPx,
           cardsInViewCount: cardsInViewport.size,
           cardsInViewIds: Array.from(cardsInViewport).slice(0, 20),
           lastCardHovered,
@@ -347,16 +457,25 @@
     } catch (_) {}
   }
 
-  // URL change → reset time
-  const origPushState = history.pushState
-  const origReplaceState = history.replaceState
+  // URL change → reset time, accumulate total when leaving a job detail
+  const reScanCallbacks = []
   function onUrlChangeForPageState() {
     const url = window.location.href
     if (url !== lastUrl) {
+      const wasOnDetail = !!lastUrl && isDetailUrl(lastUrl)
+      if (wasOnDetail) {
+        const elapsed = Math.round((Date.now() - lastUrlChangeTime) / 1000)
+        totalTimeOnDetailSec += elapsed
+        if (isDev) LOG('[URL] left job detail, added', elapsed, 's, total now:', totalTimeOnDetailSec)
+      }
       lastUrl = url
       lastUrlChangeTime = Date.now()
+      // Re-scan for elements when navigating (job detail panel, apply button, etc. load after URL change)
+      reScanCallbacks.forEach((cb) => { try { cb() } catch (_) {} })
     }
   }
+  const origPushState = history.pushState
+  const origReplaceState = history.replaceState
   history.pushState = function (...args) {
     origPushState.apply(this, args)
     onUrlChangeForPageState()
@@ -369,32 +488,73 @@
   lastUrl = window.location.href
   lastUrlChangeTime = Date.now()
 
+  // Poll for URL changes (content script runs in isolated world; page's history.pushState doesn't trigger our wrapper)
+  setInterval(onUrlChangeForPageState, 800)
+
   // Tab visibility
   document.addEventListener('visibilitychange', () => {
     sendPageState()
   })
 
-  // Scroll (throttled)
+  // Scroll (throttled) - window + site-specific scroll containers (e.g. LinkedIn split layout)
   let scrollThrottle = null
-  window.addEventListener(
-    'scroll',
-    () => {
-      if (scrollThrottle) return
-      scrollThrottle = setTimeout(() => {
-        scrollThrottle = null
-        sendPageState()
-      }, SCROLL_THROTTLE_MS)
-    },
-    { passive: true },
-  )
+  function onScroll(e) {
+    const target = e?.target
+    if (target?.dataset?.gamedinScrollContainer) {
+      const last = scrollContainerLastTop.get(target) ?? target.scrollTop
+      const delta = target.scrollTop - last
+      totalScrollPx += Math.abs(delta)
+      scrollContainerLastTop.set(target, target.scrollTop)
+    } else {
+      const delta = window.scrollY - lastWindowScrollY
+      totalScrollPx += Math.abs(delta)
+      lastWindowScrollY = window.scrollY
+    }
+    if (scrollThrottle) return
+    scrollThrottle = setTimeout(() => {
+      scrollThrottle = null
+      sendPageState()
+    }, SCROLL_THROTTLE_MS)
+  }
+  lastWindowScrollY = window.scrollY
+  window.addEventListener('scroll', onScroll, { passive: true })
+  const ps = act.pageState
+  if (ps?.scrollContainerSelectors?.length) {
+    const observed = new WeakSet()
+    let attachCount = 0
+    function attachScroll(el) {
+      if (!el || observed.has(el)) return
+      observed.add(el)
+      el.dataset.gamedinScrollContainer = '1'
+      scrollContainerLastTop.set(el, el.scrollTop)
+      el.addEventListener('scroll', onScroll, { passive: true })
+      attachCount++
+    }
+    function observeScrollContainers() {
+      const prev = attachCount
+      for (const sel of ps.scrollContainerSelectors) {
+        try {
+          document.querySelectorAll(sel).forEach(attachScroll)
+        } catch (_) {}
+      }
+      if (isDev && attachCount > prev) LOG('[Scroll] attached to', attachCount - prev, 'new container(s), total:', attachCount)
+    }
+    observeScrollContainers()
+    const scrollMo = new MutationObserver(observeScrollContainers)
+    if (document.body) scrollMo.observe(document.body, { childList: true, subtree: true })
+    reScanCallbacks.push(observeScrollContainers)
+    ;[2000, 5000, 10000, 20000].forEach((ms) => setTimeout(observeScrollContainers, ms))
+  }
 
-  // IntersectionObserver for cards + scroll-past
-  const act = site.activity || {}
+  // IntersectionObserver for cards + scroll-past (act already declared above)
   const idAttrsForCards = [act.jobList?.idAttr, 'data-occludable-job-id', 'data-jk', 'data-job-id'].filter(Boolean)
   function getCardId(el) {
+    if (!el) return ''
     for (const a of idAttrsForCards) {
-      const v = el.getAttribute?.(a)
+      let v = el.getAttribute?.(a)
       if (v) return v
+      const child = el.querySelector?.(`[${a}]`)
+      if (child) return child.getAttribute?.(a) || ''
     }
     return ''
   }
@@ -418,35 +578,38 @@
       { root: null, rootMargin: '0px', threshold: 0.1 },
     )
     function observeCards() {
-      document.querySelectorAll(act.jobList.cardSelector).forEach((card) => {
+      const cards = document.querySelectorAll(act.jobList.cardSelector)
+      let observed = 0
+      cards.forEach((card) => {
         if (!card.dataset?.gamedinObserved) {
           card.dataset.gamedinObserved = '1'
           observer.observe(card)
+          observed++
         }
       })
+      if (isDev && observed > 0) LOG('[Cards] observed', observed, 'new, total cards matched:', cards.length)
     }
     observeCards()
     const mo = new MutationObserver(observeCards)
     if (document.body) mo.observe(document.body, { childList: true, subtree: true })
+    reScanCallbacks.push(observeCards)
+    ;[2000, 5000, 10000, 20000].forEach((ms) => setTimeout(observeCards, ms))
   }
 
   // Card hover
   if (act.jobClicked?.cardSelector) {
     const jc = act.jobClicked
-    const idAttrs = [act.jobList?.idAttr, 'data-occludable-job-id', 'data-jk', 'data-job-id'].filter(Boolean)
     document.addEventListener(
       'mouseenter',
       (e) => {
         const card = e.target.closest?.(jc.cardSelector)
         if (!card) return
-        let id = ''
-        for (const a of idAttrs) {
-          id = card.getAttribute?.(a) || ''
-          if (id) break
-        }
         const tEl = card.querySelector?.(jc.titleSelector)
         const cEl = card.querySelector?.(jc.companySelector)
-        lastCardHovered = { jobId: id, title: (tEl?.textContent || '').trim().slice(0, 40), company: (cEl?.textContent || '').trim().slice(0, 40) }
+        const title = (tEl?.textContent || '').trim().slice(0, 40)
+        const company = (cEl?.textContent || '').trim().slice(0, 40)
+        lastCardHovered = { jobId: getCardId(card), title, company }
+        if (isDev) LOG('[Hover] card', { jobId: lastCardHovered.jobId, title, company })
         lastCardHoverStart = Date.now()
         lastCardHoverDurationSec = 0
       },
@@ -466,8 +629,8 @@
     )
   }
 
-  // Apply button visibility (generic: look for common apply button patterns)
-  const applySelectors = ['button[aria-label*="Apply"]', 'button[aria-label*="apply"]', 'a[href*="apply"]', '[data-testid*="apply"]', '.apply-button', '.jobs-apply-button', 'button[data-test-id*="apply"]']
+  // Apply button visibility (site-specific or generic)
+  const applySelectors = act.pageState?.applySelectors || ['button[aria-label*="Apply"]', 'button[aria-label*="apply"]', 'a[href*="apply"]', '[data-testid*="apply"]', '.apply-button', '.jobs-apply-button', 'button[data-test-id*="apply"]']
   function checkApplyButton() {
     let found = false
     for (const sel of applySelectors) {
@@ -486,10 +649,16 @@
     applyBtnInView = found
   }
   setInterval(checkApplyButton, 1000)
+  reScanCallbacks.push(checkApplyButton)
 
   // Periodic page state send
   setInterval(sendPageState, PAGE_STATE_INTERVAL_MS)
   sendPageState()
+
+  if (isDev) {
+    setInterval(debugPageState, PAGE_STATE_DEBUG_INTERVAL_MS)
+    setTimeout(debugPageState, 3000)
+  }
 
   LOG('Page element capture started', { site: site.id })
 })()

@@ -13,6 +13,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "extension:dev": "node scripts/extension-dev.js",
     "preview": "vite preview",
     "prepare": "husky"
   },

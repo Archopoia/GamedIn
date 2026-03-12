@@ -55,7 +55,7 @@ function App() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      console.log('[GamedIn App] Dispatching gamedin-extension-ready')
+      if (isDevMode) console.log('[GamedIn App] Dispatching gamedin-extension-ready')
       window.dispatchEvent(new CustomEvent('gamedin-extension-ready'))
     }
   }, [])
@@ -64,7 +64,7 @@ function App() {
     const handler = (e: Event) => {
       const ev = e as CustomEvent<{ title: string; company: string; source: string }>
       const { title, company, source } = ev.detail || {}
-      console.log('[GamedIn App] Received gamedin-apply-logged', { title, company, source })
+      if (isDevMode) console.log('[GamedIn App] Received gamedin-apply-logged', { title, company, source })
       const parsed = applicationInputSchema.safeParse({
         title: title?.trim() || 'Unknown Role',
         company: company?.trim() || 'Unknown Company',
@@ -72,10 +72,10 @@ function App() {
         qualityScore: 3,
       })
       if (!parsed.success) {
-        console.log('[GamedIn App] Validation failed', parsed.error?.issues)
+        if (isDevMode) console.log('[GamedIn App] Validation failed', parsed.error?.issues)
         return
       }
-      console.log('[GamedIn App] Applying reward for', parsed.data)
+      if (isDevMode) console.log('[GamedIn App] Applying reward for', parsed.data)
       setState((current) => {
         const result = applyLoggedCommand(current, {
           ...parsed.data,
@@ -90,7 +90,7 @@ function App() {
         }
       })
       setMessage('Application logged from LinkedIn! Rewards granted.')
-      console.log('[GamedIn App] Reward applied successfully')
+      if (isDevMode) console.log('[GamedIn App] Reward applied successfully')
     }
     window.addEventListener('gamedin-apply-logged', handler)
     return () => window.removeEventListener('gamedin-apply-logged', handler)
@@ -119,6 +119,12 @@ function App() {
 
   useEffect(() => {
     if (activeTab === 'stats' || activeTab === 'pagedata') fetchActivity()
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'pagedata') return
+    const id = setInterval(fetchActivity, 1000)
+    return () => clearInterval(id)
   }, [activeTab])
 
   const todayProgress = useMemo(() => {

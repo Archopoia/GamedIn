@@ -10,6 +10,7 @@ pnpm-debug.log*
 # Project-specific
 references/
 docs/
+.extension-dev-profile/
 
 # Dependencies
 node_modules/

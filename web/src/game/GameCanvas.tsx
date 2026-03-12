@@ -21,6 +21,7 @@ export function GameCanvas({ entities }: GameCanvasProps) {
       height: 120,
       parent: rootRef.current,
       transparent: true,
+      banner: false,
       scene: {
         create() {
           this.add.rectangle(150, 60, 270, 95, 0x234f3b, 0.8).setStrokeStyle(2, 0x6ed6a3)

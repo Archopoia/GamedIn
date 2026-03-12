@@ -90,6 +90,7 @@ export function Arena({ state, setState, setMessage }: ArenaProps) {
       scene: [ArenaScene],
       physics: { default: 'arcade' },
       audio: { noAudio: true },
+      banner: false,
     }
 
     const game = new Phaser.Game(config)
