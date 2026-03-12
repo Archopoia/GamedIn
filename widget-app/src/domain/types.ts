@@ -42,6 +42,7 @@ export interface ArenaEnemy {
   hp: number
   lastHitAt?: number
   lockedOnPet?: boolean
+  lockSlot?: number
 }
 
 export interface ArenaWeapon {
