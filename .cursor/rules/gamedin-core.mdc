@@ -19,6 +19,7 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 2. Prefer end-to-end slices (feature + persistence + basic tests + docs) over partial scaffolding.
 3. Keep prompts/specs explicit and deterministic; avoid ambiguous "magic" behavior.
 4. Before introducing external APIs/libraries, verify current usage/docs with Context7 when available.
+5. **Always rebuild at the end of changes:** Run `npm run build` and `npm run build:widget` in `web/` after edits to extension, web app, or widget so the user sees the latest build.
 
 ## Architecture and Boundaries
 
