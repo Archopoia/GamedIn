@@ -19,6 +19,11 @@ const ENEMY_VERTICAL_STEER = 0.00025
 const FIRE_INTERVAL_MS = 800
 const PROJECTILE_SPEED = 8
 const PET_CENTER = 400
+const PET_CONTACT_HOLD_RADIUS = 26
+const PET_BASE_COLLIDER_RX = 30
+const PET_BASE_COLLIDER_RY = 20
+const ENEMY_BASE_COLLIDER_RX = 7
+const ENEMY_BASE_COLLIDER_RY = 6
 const BASE_HIT_RADIUS = 7
 const HIT_RADIUS_BY_DEPTH = 6
 const PROJECTILE_COLLIDER_RADIUS = 3
@@ -49,6 +54,58 @@ function pointToSegmentDistance(
   const closestX = x1 + dx * clampedT
   const closestY = y1 + dy * clampedT
   return Math.hypot(px - closestX, py - closestY)
+}
+
+function isInsidePetContactCollider(
+  x: number,
+  y: number,
+  enemyRx = ENEMY_BASE_COLLIDER_RX,
+  enemyRy = ENEMY_BASE_COLLIDER_RY,
+): boolean {
+  const combinedRx = PET_BASE_COLLIDER_RX + enemyRx
+  const combinedRy = PET_BASE_COLLIDER_RY + enemyRy
+  const nx = (x - PET_CENTER) / combinedRx
+  const ny = (y - PET_WORLD_Y) / combinedRy
+  return nx * nx + ny * ny <= 1
+}
+
+function segmentHitsPetContactCollider(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  enemyRx = ENEMY_BASE_COLLIDER_RX,
+  enemyRy = ENEMY_BASE_COLLIDER_RY,
+): boolean {
+  const combinedRx = PET_BASE_COLLIDER_RX + enemyRx
+  const combinedRy = PET_BASE_COLLIDER_RY + enemyRy
+  const nx1 = (x1 - PET_CENTER) / combinedRx
+  const ny1 = (y1 - PET_WORLD_Y) / combinedRy
+  const nx2 = (x2 - PET_CENTER) / combinedRx
+  const ny2 = (y2 - PET_WORLD_Y) / combinedRy
+  return pointToSegmentDistance(0, 0, nx1, ny1, nx2, ny2) <= 1
+}
+
+function clampToPetContactBoundary(
+  x: number,
+  y: number,
+  enemyRx = ENEMY_BASE_COLLIDER_RX,
+  enemyRy = ENEMY_BASE_COLLIDER_RY,
+): { x: number; y: number } {
+  const combinedRx = PET_BASE_COLLIDER_RX + enemyRx
+  const combinedRy = PET_BASE_COLLIDER_RY + enemyRy
+  const dx = x - PET_CENTER
+  const dy = y - PET_WORLD_Y
+  const denom = Math.sqrt(
+    (dx * dx) / (combinedRx * combinedRx) + (dy * dy) / (combinedRy * combinedRy),
+  )
+  if (denom <= 0.0001) {
+    return { x: PET_CENTER, y: PET_WORLD_Y + combinedRy }
+  }
+  return {
+    x: PET_CENTER + dx / denom,
+    y: PET_WORLD_Y + dy / denom,
+  }
 }
 
 function pickEnemyTargetAroundPet(): { targetX: number; targetY: number } {
@@ -90,11 +147,74 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
 
   // 1. Move enemies from horizon toward pet ring.
   let enemies = arena.enemies.map((e) => {
+    if (e.lockedOnPet) return e
+
+    const currentDxToPet = e.x - PET_CENTER
+    const currentDyToPet = e.y - PET_WORLD_Y
+    const currentDistToPet = Math.hypot(currentDxToPet, currentDyToPet)
+    if (
+      currentDistToPet <= PET_CONTACT_HOLD_RADIUS ||
+      isInsidePetContactCollider(e.x, e.y)
+    ) {
+      // Once an enemy reaches pet contact range, keep it there attacking.
+      const clamped = clampToPetContactBoundary(e.x, e.y)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H1',location:'arena-sim.ts:contact-lock-current',message:'Enemy locked from current position',data:{enemyId:e.id,x:e.x,y:e.y,lockedOnPet:e.lockedOnPet ?? false,currentDistToPet,insideContactEllipse:isInsidePetContactCollider(e.x,e.y)},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-current',message:'Locked enemy side snapshot',data:{enemyId:e.id,lockY:clamped.y,side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      return { ...e, x: clamped.x, y: clamped.y, lockedOnPet: true }
+    }
+
     const nextX = e.x + (e.targetX - e.x) * ENEMY_LATERAL_STEER * step
     const nextY =
       e.y +
       ENEMY_FORWARD_SPEED * step +
       (e.targetY - e.y) * ENEMY_VERTICAL_STEER * step
+    if (segmentHitsPetContactCollider(e.x, e.y, nextX, nextY)) {
+      const clamped = clampToPetContactBoundary(nextX, nextY)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H2',location:'arena-sim.ts:contact-lock-segment',message:'Enemy path intersects pet contact ellipse',data:{enemyId:e.id,fromX:e.x,fromY:e.y,toX:nextX,toY:nextY,clampedX:clamped.x,clampedY:clamped.y,targetX:e.targetX,targetY:e.targetY},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-segment',message:'Locked enemy side snapshot',data:{enemyId:e.id,fromY:e.y,toY:nextY,lockY:clamped.y,side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      return { ...e, x: clamped.x, y: clamped.y, lockedOnPet: true }
+    }
+    const nextDxToPet = nextX - PET_CENTER
+    const nextDyToPet = nextY - PET_WORLD_Y
+    const nextDistToPet = Math.hypot(nextDxToPet, nextDyToPet)
+    if (nextDistToPet <= PET_CONTACT_HOLD_RADIUS) {
+      const angle = Math.atan2(nextDyToPet, nextDxToPet)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H3',location:'arena-sim.ts:contact-lock-radius',message:'Enemy locked from radial threshold',data:{enemyId:e.id,nextX,nextY,nextDistToPet,angle,targetX:e.targetX,targetY:e.targetY},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      return {
+        ...e,
+        x: PET_CENTER + Math.cos(angle) * PET_CONTACT_HOLD_RADIUS,
+        y: PET_WORLD_Y + Math.sin(angle) * PET_CONTACT_HOLD_RADIUS,
+        lockedOnPet: true,
+      }
+    }
+
+    if (
+      Math.abs(nextX - PET_CENTER) < PET_BASE_COLLIDER_RX + ENEMY_BASE_COLLIDER_RX + 6 &&
+      nextY > PET_WORLD_Y + PET_BASE_COLLIDER_RY + ENEMY_BASE_COLLIDER_RY + 2
+    ) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H4',location:'arena-sim.ts:possible-pass-through',message:'Enemy moved below pet base without lock',data:{enemyId:e.id,fromX:e.x,fromY:e.y,toX:nextX,toY:nextY,lockedOnPet:e.lockedOnPet ?? false,targetX:e.targetX,targetY:e.targetY,currentDistToPet,nextDistToPet},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+    }
+    if (
+      !segmentHitsPetContactCollider(e.x, e.y, nextX, nextY) &&
+      (e.y - PET_WORLD_Y) * (nextY - PET_WORLD_Y) <= 0 &&
+      Math.abs(nextX - PET_CENTER) < PET_BASE_COLLIDER_RX + ENEMY_BASE_COLLIDER_RX + 2
+    ) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H5',location:'arena-sim.ts:center-plane-cross-no-collision',message:'Enemy crossed pet center plane without contact lock',data:{enemyId:e.id,fromX:e.x,fromY:e.y,toX:nextX,toY:nextY,targetX:e.targetX,targetY:e.targetY},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+    }
     return { ...e, x: nextX, y: nextY }
   })
 

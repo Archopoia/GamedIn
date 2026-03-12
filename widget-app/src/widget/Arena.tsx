@@ -103,7 +103,17 @@ function syncStageFromState(
         0.1 +
         ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
       const enemySize = 4 + projected.depth * 16
-      return { projected, reveal, hitFlash, pulse, enemySize }
+      return {
+        enemyId: enemy.id,
+        worldY: enemy.y,
+        isBehindPet: enemy.y < WORLD_PET_Y,
+        lockedOnPet: enemy.lockedOnPet ?? false,
+        projected,
+        reveal,
+        hitFlash,
+        pulse,
+        enemySize,
+      }
     })
 
   const drawEnemy = (enemy: (typeof renderEnemies)[number]): void => {
@@ -142,7 +152,21 @@ function syncStageFromState(
 
   // Draw enemies behind pet first to preserve depth.
   for (const enemy of renderEnemies) {
-    if (enemy.projected.y <= centerY + 2) drawEnemy(enemy)
+    if (enemy.lockedOnPet && Math.abs(enemy.projected.y - centerY) < 18) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H8',location:'Arena.tsx:locked-layer-snapshot',message:'Locked enemy render layer decision',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,side:enemy.worldY >= WORLD_PET_Y ? 'front' : 'back',projectedY:enemy.projected.y,centerY,drawLayer:enemy.projected.y <= centerY + 2 ? 'behind' : 'front',depth:enemy.projected.depth},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+    }
+    if (
+      enemy.projected.y <= centerY + 2 &&
+      enemy.projected.depth > 0.92 &&
+      enemy.reveal > 0.8
+    ) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H6',location:'Arena.tsx:depth-order-contradiction',message:'Deep enemy rendered behind pet',data:{projectedY:enemy.projected.y,centerY,depth:enemy.projected.depth,reveal:enemy.reveal},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+    }
+    if (enemy.isBehindPet) drawEnemy(enemy)
   }
 
   // Pet with soft shadow and core.
@@ -178,7 +202,7 @@ function syncStageFromState(
 
   // Draw enemies in front after pet to complete 3D wrap-around.
   for (const enemy of renderEnemies) {
-    if (enemy.projected.y > centerY + 2) drawEnemy(enemy)
+    if (!enemy.isBehindPet) drawEnemy(enemy)
   }
 
   // Projectiles with trails.
