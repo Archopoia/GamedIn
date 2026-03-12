@@ -181,15 +181,19 @@ function stepOnContactBoundaryTowards(
   toY: number,
   maxStep: number,
 ): { x: number; y: number; remaining: number } {
-  const fromBoundary = clampToPetContactBoundary(fromX, fromY)
-  const dx = toX - fromBoundary.x
-  const dy = toY - fromBoundary.y
+  const startsInside = isInsidePetContactCollider(fromX, fromY)
+  const fromPoint = startsInside
+    ? clampToPetContactBoundary(fromX, fromY)
+    : { x: fromX, y: fromY }
+  const dx = toX - fromPoint.x
+  const dy = toY - fromPoint.y
   const distance = Math.hypot(dx, dy)
   const ratio = distance > 0 ? Math.min(1, maxStep / distance) : 1
-  const moved = clampToPetContactBoundary(
-    fromBoundary.x + dx * ratio,
-    fromBoundary.y + dy * ratio,
-  )
+  const linearX = fromPoint.x + dx * ratio
+  const linearY = fromPoint.y + dy * ratio
+  const moved = isInsidePetContactCollider(linearX, linearY)
+    ? clampToPetContactBoundary(linearX, linearY)
+    : { x: linearX, y: linearY }
   const remaining = Math.hypot(toX - moved.x, toY - moved.y)
   return { x: moved.x, y: moved.y, remaining }
 }
@@ -290,11 +294,11 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       segmentHitsPetContactCollider(enemy.x, enemy.y, nextX, nextY) ||
       isInsidePetContactCollider(nextX, nextY)
     ) {
-      const moved = moveTowardBoundary(nextX, nextY, LOCKED_SLIDE_SPEED * step, true)
-      const jumpToBoundary = Math.hypot(moved.x - nextX, moved.y - nextY)
-      if (jumpToBoundary > LOCKED_SLIDE_SPEED * step * 1.35) {
+      const moved = moveTowardBoundary(enemy.x, enemy.y, LOCKED_SLIDE_SPEED * step, true)
+      const jumpToBoundary = Math.hypot(moved.x - enemy.x, moved.y - enemy.y)
+      if (jumpToBoundary > LOCKED_SLIDE_SPEED * step * 1.15) {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H34',location:'arena-sim.ts:movement-snap-detected',message:'Detected large boundary snap step',data:{enemyId:enemy.id,slot:enemy.lockSlot,nextX,nextY,movedX:moved.x,movedY:moved.y,jumpToBoundary,maxExpected:LOCKED_SLIDE_SPEED * step * 1.35,lockedAfterMove:moved.lockedOnPet},timestamp:Date.now()})}).catch(()=>{})
+        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H34',location:'arena-sim.ts:movement-snap-detected',message:'Detected large boundary snap step',data:{enemyId:enemy.id,slot:enemy.lockSlot,fromX:enemy.x,fromY:enemy.y,nextX,nextY,movedX:moved.x,movedY:moved.y,jumpToBoundary,maxExpected:LOCKED_SLIDE_SPEED * step * 1.15,lockedAfterMove:moved.lockedOnPet},timestamp:Date.now()})}).catch(()=>{})
         // #endregion
       }
       return { ...enemy, ...moved }
