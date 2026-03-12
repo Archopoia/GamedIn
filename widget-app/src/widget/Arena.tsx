@@ -12,7 +12,6 @@ const debugPrevLayerByEnemy = new Map<
   string,
   { isBehindPet: boolean; drawByRenderY: boolean; lockedOnPet: boolean }
 >()
-const lockRenderBlendByEnemy = new Map<string, number>()
 const TICK_MS = 100
 
 interface ArenaProps {
@@ -114,23 +113,8 @@ function syncStageFromState(
         0.1 +
         ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
       const enemySize = 4 + projected.depth * 16
-      const desiredContactDist = 20 + enemySize * 0.5 - 1
-      let renderX = projected.x
-      let renderY = projected.y
-      const worldAngle = Math.atan2(enemy.y - WORLD_PET_Y, enemy.x - LOGICAL_WIDTH / 2)
-      const prevBlend = lockRenderBlendByEnemy.get(enemy.id) ?? 0
-      const nextBlend = enemy.lockedOnPet
-        ? Math.min(1, prevBlend + 0.18)
-        : Math.max(0, prevBlend - 0.3)
-      lockRenderBlendByEnemy.set(enemy.id, nextBlend)
-      if (enemy.lockedOnPet) {
-        const contactRx = desiredContactDist
-        const contactRy = desiredContactDist * 0.82
-        const contactX = centerX + Math.cos(worldAngle) * contactRx
-        const contactY = centerY + Math.sin(worldAngle) * contactRy
-        renderX = projected.x + (contactX - projected.x) * nextBlend
-        renderY = projected.y + (contactY - projected.y) * nextBlend
-      }
+      const renderX = projected.x
+      const renderY = projected.y
       const drawBehindPet = renderY <= centerY + 2
       const prevLayer = debugPrevLayerByEnemy.get(enemy.id)
       if (
@@ -140,11 +124,6 @@ function syncStageFromState(
       ) {
         // #region agent log
         fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H33',location:'Arena.tsx:render-layer-toggle',message:'Enemy render-layer toggle event',data:{enemyId:enemy.id,prevDrawBehind:prevLayer.drawByRenderY,nextDrawBehind:drawBehindPet,prevLockedOnPet:prevLayer.lockedOnPet,nextLockedOnPet:enemy.lockedOnPet ?? false,worldY:enemy.y,renderY,centerY},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
-      }
-      if (enemy.lockedOnPet && nextBlend > 0 && nextBlend < 1) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H35',location:'Arena.tsx:lock-render-blend',message:'Blending locked render position to avoid pop',data:{enemyId:enemy.id,blend:nextBlend,projectedX:projected.x,projectedY:projected.y,renderX,renderY,centerY},timestamp:Date.now()})}).catch(()=>{})
         // #endregion
       }
       debugPrevLayerByEnemy.set(enemy.id, {
@@ -157,7 +136,6 @@ function syncStageFromState(
         worldY: enemy.y,
         isBehindPet: drawBehindPet,
         lockedOnPet: enemy.lockedOnPet ?? false,
-        worldAngle,
         projected,
         renderX,
         renderY,
