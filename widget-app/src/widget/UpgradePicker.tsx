@@ -7,8 +7,8 @@ interface UpgradePickerProps {
 
 export function UpgradePicker({ options, onSelect }: UpgradePickerProps) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[2000]">
-      <div className="bg-gamedin-bg border border-gamedin-border rounded-lg p-5 min-w-[260px]">
+    <div className="gd-modal-overlay">
+      <div className="gd-modal-card min-w-[280px] p-5">
         <h3 className="m-0 mb-3 text-sm text-gamedin-accent">Pick 1 of 3</h3>
         <p className="m-0 mb-3 text-[11px] text-gamedin-muted">
           Weapons auto-fire in the arena. Passives boost defense. Stats increase Hopium.
@@ -18,7 +18,7 @@ export function UpgradePicker({ options, onSelect }: UpgradePickerProps) {
             <button
               key={opt.id}
               type="button"
-              className="py-2.5 px-3 text-xs bg-gamedin-panel border border-gamedin-border rounded text-gamedin-text-bright cursor-pointer text-left flex flex-col gap-0.5 hover:bg-gamedin-success hover:border-gamedin-accent"
+              className="gd-card px-3 py-2.5 text-left flex flex-col gap-0.5 hover:border-gamedin-accent hover:shadow-[0_0_20px_rgba(210,167,99,0.25)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.995]"
               onClick={() => onSelect(opt.id)}
             >
               <span className="font-bold">{opt.label}</span>

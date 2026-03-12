@@ -69,28 +69,36 @@ export function DevPanelWrapper({
   }
 
   return (
-    <div className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_p]:text-xs [&_p]:text-gamedin-muted [&_button]:m-0 [&_button]:py-1 [&_button]:px-2 [&_button]:text-[11px] [&_button]:bg-gamedin-success [&_button]:border [&_button]:border-gamedin-border [&_button]:rounded [&_button]:text-gamedin-text-bright [&_button]:cursor-pointer">
-      <h3>Dev Mode</h3>
+    <div className="text-gamedin-text">
+      <h3 className="m-0 mb-1.5 text-[13px] text-gamedin-accent">Dev Mode</h3>
       <p className="text-gamedin-muted text-xs m-0">
         Test features without real applications
       </p>
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" onClick={handleDevQuickApply}>
+        <button type="button" onClick={handleDevQuickApply} className="gd-button">
           Quick apply (1)
         </button>
-        <button type="button" onClick={() => handleDevBulkApply(5)}>
+        <button
+          type="button"
+          onClick={() => handleDevBulkApply(5)}
+          className="gd-button"
+        >
           Bulk apply (5)
         </button>
-        <button type="button" onClick={() => handleDevBulkApply(10)}>
+        <button
+          type="button"
+          onClick={() => handleDevBulkApply(10)}
+          className="gd-button"
+        >
           Bulk apply (10)
         </button>
-        <button type="button" onClick={handleDevSeedRich}>
+        <button type="button" onClick={handleDevSeedRich} className="gd-button">
           Seed rich state
         </button>
         <button
           type="button"
           onClick={handleDevReset}
-          className="text-gamedin-danger border-gamedin-danger-border"
+          className="gd-button gd-button-danger"
         >
           Reset state
         </button>

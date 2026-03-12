@@ -41,9 +41,11 @@ export function WidgetBar({
   ] as TabId[]
 
   return (
-    <div className="shrink-0 flex items-center gap-3 py-1.5 px-3 bg-gamedin-bg border-b border-gamedin-border">
-      <div className="flex flex-wrap items-center gap-2.5 text-gamedin-text">
-        <span className="font-bold text-gamedin-accent mr-1">GamedIn</span>
+    <div className="shrink-0 flex items-center gap-2.5 px-3 py-1.5 border-b border-gamedin-border bg-gamedin-bg/70 backdrop-blur-[1px]">
+      <div className="flex flex-wrap items-center gap-2 text-gamedin-text">
+        <span className="mr-1 rounded-md border border-gamedin-accent/40 bg-gamedin-panel px-1.5 py-0.5 font-bold text-gamedin-accent shadow-[0_0_10px_rgba(210,167,99,0.2)]">
+          GamedIn
+        </span>
         <span title="Currency earned by applying">
           Hopium: {state.economy.hopium}
         </span>
@@ -59,7 +61,7 @@ export function WidgetBar({
           <button
             key={tab}
             type="button"
-            className={`py-1 px-2 text-[11px] bg-transparent border border-gamedin-border rounded text-gamedin-muted cursor-pointer hover:bg-gamedin-panel hover:text-gamedin-accent ${activeTab === tab ? 'bg-gamedin-panel text-gamedin-accent' : ''}`}
+            className={`gd-button ${activeTab === tab ? 'bg-gamedin-hover border-gamedin-accent text-gamedin-accent shadow-[0_0_14px_rgba(210,167,99,0.2)]' : 'text-gamedin-muted'}`}
             onMouseDown={onTabMouseDown}
             onClick={() => setActiveTab(activeTab === tab ? null : tab)}
           >
@@ -69,7 +71,7 @@ export function WidgetBar({
       </div>
       <div className="flex-1 min-w-[80px] max-w-[120px]">
         <div
-          className="h-1 bg-gamedin-panel rounded-full overflow-hidden"
+          className="gd-progress-track"
           role="progressbar"
           aria-valuenow={todayProgress}
           aria-valuemin={0}
@@ -77,13 +79,15 @@ export function WidgetBar({
           aria-label={`Daily run progress: ${todayProgress}%`}
         >
           <span
-            className="block h-full bg-gamedin-accent transition-[width] duration-200"
+            className="gd-progress-fill transition-[width] duration-300 ease-out"
             style={{ width: `${todayProgress}%` }}
           />
         </div>
       </div>
       {message && (
-        <span className="text-[11px] text-gamedin-text">{message}</span>
+        <span className="gd-feedback max-w-[180px]" role="status" aria-live="polite">
+          {message}
+        </span>
       )}
     </div>
   )

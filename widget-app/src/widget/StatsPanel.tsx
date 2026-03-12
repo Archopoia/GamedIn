@@ -41,12 +41,14 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
     .slice(0, 4)
 
   return (
-    <div className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_p]:text-xs [&_p]:text-gamedin-text">
-      <h3>Rejection Ledger</h3>
+    <div className="text-gamedin-text">
+      <h3 className="m-0 mb-1.5 text-[13px] text-gamedin-accent">
+        Rejection Ledger
+      </h3>
       <p className="mb-1">Apps: {state.applications.length}</p>
       <p className="mb-1">Achievements: {state.meta.achievements.length}</p>
       {state.applications.length === 0 && (
-        <p className="text-gamedin-muted text-xs my-2 py-2 border-t border-gamedin-border">
+        <p className="gd-card text-gamedin-muted text-xs my-2 py-2 px-2">
           Apply to jobs on LinkedIn, Indeed, or Glassdoor to see your first
           entry. The extension detects applies automatically.
         </p>
@@ -55,11 +57,7 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
         <div className="flex flex-wrap items-center gap-1.5 gap-x-2.5 mt-2">
           <span className="text-gamedin-muted text-xs">Unlocked:</span>
           {state.meta.collectibles.map((id) => (
-            <span
-              key={id}
-              className="py-0.5 px-2 bg-gamedin-border rounded text-xs text-gamedin-accent"
-              title={id}
-            >
+            <span key={id} className="gd-badge" title={id}>
               {ACHIEVEMENT_LABELS[id] ?? id}
             </span>
           ))}
@@ -74,7 +72,7 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
         <span title="Job detail views">Jobs viewed: {counts.job_viewed}</span>
       </div>
       {state.applications.length > 0 && (
-        <ul className="list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-0.5 [&_li]:border-b [&_li]:border-gamedin-border">
+        <ul className="gd-card list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-1 [&_li]:px-2 [&_li]:border-b [&_li]:border-gamedin-border [&_li:last-child]:border-b-0">
           {[...state.applications]
             .reverse()
             .slice(0, 4)
@@ -90,7 +88,7 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
         </ul>
       )}
       {recent.length > 0 && (
-        <ul className="list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-0.5 [&_li]:border-b [&_li]:border-gamedin-border">
+        <ul className="gd-card list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-1 [&_li]:px-2 [&_li]:border-b [&_li]:border-gamedin-border [&_li:last-child]:border-b-0">
           {recent.map((ev, i) => (
             <li key={i}>
               <span className="text-gamedin-accent mr-1">{ev.event}</span>
@@ -107,7 +105,7 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
       <button
         type="button"
         onClick={onRefresh}
-        className="mt-1 py-1 px-2 text-[11px] bg-gamedin-success border border-gamedin-border rounded text-gamedin-text-bright cursor-pointer"
+        className="gd-button mt-1"
       >
         Refresh the Pain
       </button>

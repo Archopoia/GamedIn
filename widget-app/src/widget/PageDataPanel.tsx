@@ -38,25 +38,27 @@ function formatAge(ts?: number): string {
 }
 
 export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
-  const isEmpty = !pageState || (pageState.receivedAt === undefined && pageState.timestamp === undefined)
+  const isEmpty =
+    !pageState ||
+    (pageState.receivedAt === undefined && pageState.timestamp === undefined)
 
   return (
-    <div>
+    <div className="text-gamedin-text">
       <h2 className="m-0 mb-1.5 text-[13px] text-gamedin-accent">Page Elements (Live)</h2>
       <button
         type="button"
-        className="mb-2 py-1 px-2 text-[11px] bg-gamedin-success border border-gamedin-border rounded text-gamedin-text-bright cursor-pointer"
+        className="gd-button mb-2"
         onClick={onRefresh}
       >
         Refresh
       </button>
 
       {isEmpty ? (
-        <p className="text-xs text-gamedin-muted m-0">
+        <p className="gd-card text-xs text-gamedin-muted m-0 p-2">
           No page data yet. Open a job site (LinkedIn, Indeed, Glassdoor, etc.) in another tab and browse to see live metrics.
         </p>
       ) : (
-        <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-0.5 text-[11px] m-0">
+        <dl className="gd-card grid grid-cols-[minmax(140px,auto)_1fr] gap-x-2.5 gap-y-0.5 text-[11px] m-0 p-2">
           <dt className="text-gamedin-muted font-medium" title="Job site detected (LinkedIn, Indeed, Glassdoor, etc.)">Site</dt>
           <dd className="m-0 text-gamedin-text-bright">{pageState.site ?? '—'}</dd>
 
@@ -70,7 +72,7 @@ export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
           <dd className="m-0 text-gamedin-text-bright">{pageState.timeOnDetailSec ?? '—'}</dd>
 
           <dt className="text-gamedin-muted font-medium" title="Job ID of the job you're currently viewing">Current job</dt>
-          <dd className="m-0 text-gamedin-text-bright">{pageState.currentJobId ? <code className="text-[10px] bg-gamedin-panel py-0.5 px-1 rounded break-words block max-w-full">{pageState.currentJobId}</code> : '—'}</dd>
+          <dd className="m-0 text-gamedin-text-bright">{pageState.currentJobId ? <code className="text-[10px] bg-gamedin-bg/70 py-0.5 px-1 rounded break-words block max-w-full border border-gamedin-border">{pageState.currentJobId}</code> : '—'}</dd>
 
           <dt className="text-gamedin-muted font-medium" title="Total seconds on all job details this session (cumulative)">Total time on details (sec)</dt>
           <dd className="m-0 text-gamedin-text-bright">{pageState.totalTimeOnDetailSec ?? '—'}</dd>
@@ -108,7 +110,7 @@ export function PageDataPanel({ pageState, onRefresh }: PageDataPanelProps) {
             <>
               <dt className="text-gamedin-muted font-medium" title="Job IDs of cards currently visible in the viewport">Card IDs in view</dt>
               <dd className="m-0 text-gamedin-text-bright">
-                <code className="text-[10px] bg-gamedin-panel py-0.5 px-1 rounded break-words block max-w-full">{pageState.cardsInViewIds.slice(0, 10).join(', ')}</code>
+                <code className="text-[10px] bg-gamedin-bg/70 py-0.5 px-1 rounded break-words block max-w-full border border-gamedin-border">{pageState.cardsInViewIds.slice(0, 10).join(', ')}</code>
                 {pageState.cardsInViewIds.length > 10 && (
                   <span> … +{pageState.cardsInViewIds.length - 10} more</span>
                 )}

@@ -20,51 +20,111 @@ function syncStageFromState(
   height: number,
 ): void {
   app.stage.removeChildren()
+  const now = Date.now()
 
-  // Background
+  // Background and vignette.
   const bg = new Graphics()
   bg.rect(0, 0, width, height)
   bg.fill(COLORS_HEX.bg)
   bg.rect(0, 0, width, height)
-  bg.stroke({ width: 1, color: COLORS_HEX.border })
+  bg.stroke({ width: 2, color: COLORS_HEX.border })
   app.stage.addChild(bg)
+
+  const glowTop = new Graphics()
+  glowTop.ellipse(width * 0.25, 0, width * 0.5, height * 0.5)
+  glowTop.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
+  app.stage.addChild(glowTop)
+
+  const glowBottom = new Graphics()
+  glowBottom.ellipse(width * 0.8, height * 0.95, width * 0.45, height * 0.35)
+  glowBottom.fill({ color: COLORS_HEX.burgundy, alpha: 0.13 })
+  app.stage.addChild(glowBottom)
+
+  const gridLine = new Graphics()
+  gridLine.moveTo(0, height / 2)
+  gridLine.lineTo(width, height / 2)
+  gridLine.stroke({ width: 1, color: COLORS_HEX.border, alpha: 0.35 })
+  app.stage.addChild(gridLine)
 
   const pet = state.arena.pet
   const centerX = width / 2
-  const centerY = height - 40
+  const bob = Math.sin(now / 180) * 1.5
+  const centerY = height - 40 + bob
 
-  // Pet (circle)
+  // Pet with soft shadow and core.
   const petColor =
     pet.mood > 50
       ? COLORS_HEX.accent
       : pet.mood > 25
         ? COLORS_HEX.muted
         : COLORS_HEX.danger
+  const petShadow = new Graphics()
+  petShadow.ellipse(0, 0, 26, 9)
+  petShadow.fill({ color: COLORS_HEX.petShadow, alpha: 0.28 })
+  petShadow.x = centerX
+  petShadow.y = centerY + 24
+  app.stage.addChild(petShadow)
+
+  const petAura = new Graphics()
+  petAura.circle(0, 0, 28 + Math.sin(now / 220) * 2)
+  petAura.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
+  petAura.x = centerX
+  petAura.y = centerY
+  app.stage.addChild(petAura)
+
   const petGfx = new Graphics()
   petGfx.circle(0, 0, 20)
   petGfx.fill(petColor)
-  petGfx.stroke({ width: 1, color: COLORS_HEX.border })
+  petGfx.stroke({ width: 2, color: COLORS_HEX.border })
+
+  const petCore = new Graphics()
+  petCore.circle(0, 0, 10)
+  petCore.fill({ color: COLORS_HEX.textBright, alpha: 0.24 })
+
   petGfx.x = centerX
   petGfx.y = centerY
   app.stage.addChild(petGfx)
+  petCore.x = centerX
+  petCore.y = centerY - 2
+  app.stage.addChild(petCore)
 
-  // Enemies
+  // Enemies with glow.
   for (const enemy of state.arena.enemies.slice(-8)) {
     const ex = (enemy.x / LOGICAL_WIDTH) * width
+    const pulse = 0.12 + ((Math.sin((now + enemy.x * 20) / 250) + 1) / 2) * 0.1
+
+    const enemyAura = new Graphics()
+    enemyAura.circle(0, 0, 13)
+    enemyAura.fill({ color: COLORS_HEX.enemyCore, alpha: pulse })
+    enemyAura.x = ex + 8
+    enemyAura.y = height / 2
+    app.stage.addChild(enemyAura)
+
     const enemyGfx = new Graphics()
     enemyGfx.rect(0, 0, 16, 16)
-    enemyGfx.fill(COLORS_HEX.dangerBorder)
+    enemyGfx.fill(COLORS_HEX.burgundy)
+    enemyGfx.rect(2, 2, 12, 12)
+    enemyGfx.fill(COLORS_HEX.enemyCore)
+    enemyGfx.stroke({ width: 1, color: COLORS_HEX.danger })
     enemyGfx.x = ex
     enemyGfx.y = height / 2 - 8
     app.stage.addChild(enemyGfx)
   }
 
-  // Projectiles
+  // Projectiles with trails.
   for (const proj of (state.arena.projectiles ?? []).slice(-15)) {
     const px = (proj.x / LOGICAL_WIDTH) * width
+    const trail = new Graphics()
+    trail.rect(0, 0, 10, 3)
+    trail.fill({ color: COLORS_HEX.accent, alpha: 0.25 })
+    trail.x = px - 8
+    trail.y = height / 2 - 2
+    app.stage.addChild(trail)
+
     const projGfx = new Graphics()
-    projGfx.rect(0, 0, 6, 6)
+    projGfx.rect(0, 0, 7, 7)
     projGfx.fill(COLORS_HEX.projectile)
+    projGfx.stroke({ width: 1, color: COLORS_HEX.textBright, alpha: 0.85 })
     projGfx.x = px
     projGfx.y = height / 2 - 4
     app.stage.addChild(projGfx)
@@ -76,7 +136,10 @@ export function Arena({ state, setState }: ArenaProps) {
   const appRef = useRef<Application | null>(null)
   const stateRef = useRef(state)
   const lastTickRef = useRef(0)
-  stateRef.current = state
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -151,7 +214,7 @@ export function Arena({ state, setState }: ArenaProps) {
     <div className="w-full h-[140px] relative">
       <div ref={containerRef} className="w-full h-[140px] block" />
       <div
-        className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-gamedin-muted pointer-events-none"
+        className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-gamedin-muted pointer-events-none px-2 py-0.5 rounded-full border border-gamedin-border/60 bg-gamedin-bg/60 backdrop-blur-[1px]"
         title={`Cope Pet: mood reflects apply activity. ${moodLabel.charAt(0).toUpperCase() + moodLabel.slice(1)} = ${Math.round(pet.mood)}. Apply to feed it.`}
       >
         Cope Pet ({moodLabel}). Apply to feed it.

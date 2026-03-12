@@ -54,13 +54,12 @@ export function ProfilePanel({
   }
 
   return (
-    <form
-      onSubmit={handleProfileSave}
-      className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_label]:m-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:text-gamedin-text [&_input]:ml-1 [&_input]:py-0.5 [&_input]:px-1.5 [&_input]:text-[11px] [&_input]:bg-gamedin-panel [&_input]:border [&_input]:border-gamedin-border [&_input]:rounded [&_input]:text-gamedin-text-bright [&_button]:m-1 [&_button]:mr-1 [&_button]:mt-1 [&_button]:mb-1 [&_button]:py-1 [&_button]:px-2 [&_button]:text-[11px] [&_button]:bg-gamedin-success [&_button]:border [&_button]:border-gamedin-border [&_button]:rounded [&_button]:text-gamedin-text-bright [&_button]:cursor-pointer"
-    >
-      <h3>Hopium Config</h3>
+    <form onSubmit={handleProfileSave} className="text-gamedin-text">
+      <h3 className="m-0 mb-2 text-[13px] text-gamedin-accent">
+        Hopium Config
+      </h3>
       {!onboardingSeen && (
-        <div className="mb-3 p-2.5 px-3 bg-gamedin-panel border border-gamedin-border rounded">
+        <div className="gd-card mb-3 p-2.5 px-3">
           <p className="m-0 mb-1.5 text-xs font-bold text-gamedin-accent">
             How it works
           </p>
@@ -84,26 +83,28 @@ export function ProfilePanel({
           </ul>
           <button
             type="button"
-            className="py-1 px-2.5 text-[11px] bg-gamedin-border border border-gamedin-accent rounded text-gamedin-accent cursor-pointer hover:bg-gamedin-hover"
+            className="gd-button"
             onClick={dismissOnboarding}
           >
             Got it
           </button>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2 mb-1.5">
-        <label>
+      <div className="flex flex-wrap items-center gap-2.5 mb-1.5">
+        <label className="text-xs text-gamedin-text">
           Name{' '}
           <input
+            className="gd-input ml-1"
             value={profileInput.displayName}
             onChange={(e) =>
               setProfileInput((c) => ({ ...c, displayName: e.target.value }))
             }
           />
         </label>
-        <label>
+        <label className="text-xs text-gamedin-text">
           Daily Hopium Dose{' '}
           <input
+            className="gd-input ml-1 w-15"
             type="number"
             min={1}
             max={20}
@@ -116,9 +117,10 @@ export function ProfilePanel({
             }
           />
         </label>
-        <label>
+        <label className="text-xs text-gamedin-text">
           Roles{' '}
           <input
+            className="gd-input ml-1 min-w-[190px]"
             value={profileInput.preferredRoles}
             onChange={(e) =>
               setProfileInput((c) => ({ ...c, preferredRoles: e.target.value }))
@@ -126,7 +128,9 @@ export function ProfilePanel({
             placeholder="Preferred roles (comma-separated)"
           />
         </label>
-        <button type="submit">Commit to Delusion</button>
+        <button type="submit" className="gd-button gd-button-primary">
+          Commit to Delusion
+        </button>
       </div>
     </form>
   )

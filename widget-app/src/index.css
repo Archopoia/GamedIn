@@ -1,16 +1,209 @@
 @import "tailwindcss";
 
 @theme {
-  --color-gamedin-bg: #0d1f18;
-  --color-gamedin-bg-gradient: #1a2e24;
-  --color-gamedin-border: #2f5345;
-  --color-gamedin-accent: #6ed6a3;
-  --color-gamedin-muted: #94ac9d;
-  --color-gamedin-text: #cfffe3;
-  --color-gamedin-text-bright: #e8fff2;
-  --color-gamedin-panel: #1c382f;
-  --color-gamedin-hover: #3d6a5a;
-  --color-gamedin-success: #2d5a27;
-  --color-gamedin-danger: #e8a8a8;
-  --color-gamedin-danger-border: #5a2727;
+  --color-gamedin-bg: #1f1712;
+  --color-gamedin-bg-gradient: #2a201a;
+  --color-gamedin-border: #6a5140;
+  --color-gamedin-accent: #d2a763;
+  --color-gamedin-muted: #c6b49f;
+  --color-gamedin-text: #f0e0c8;
+  --color-gamedin-text-bright: #fff3df;
+  --color-gamedin-panel: #35271f;
+  --color-gamedin-hover: #4a3429;
+  --color-gamedin-success: #6a2f3b;
+  --color-gamedin-danger: #ffd7d7;
+  --color-gamedin-danger-border: #8d4141;
+}
+
+@layer base {
+  :root {
+    --gd-overlay: rgba(17, 11, 8, 0.78);
+    --gd-shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.3);
+    --gd-shadow-deep: 0 18px 44px rgba(0, 0, 0, 0.4);
+    --gd-glow-gold: 0 0 30px rgba(210, 167, 99, 0.24);
+    --gd-glow-burgundy: 0 0 26px rgba(106, 47, 59, 0.3);
+    --gd-ease: cubic-bezier(0.21, 1, 0.26, 1);
+    --gd-fast: 160ms;
+    --gd-mid: 260ms;
+    --gd-slow: 440ms;
+  }
+
+  html,
+  body {
+    color: var(--color-gamedin-text);
+    background:
+      radial-gradient(circle at 18% 20%, rgba(210, 167, 99, 0.16), transparent 52%),
+      radial-gradient(circle at 90% 12%, rgba(106, 47, 59, 0.19), transparent 54%),
+      linear-gradient(
+        180deg,
+        var(--color-gamedin-bg-gradient) 0%,
+        var(--color-gamedin-bg) 100%
+      );
+  }
+
+  button,
+  input {
+    transition:
+      transform var(--gd-fast) var(--gd-ease),
+      border-color var(--gd-fast) var(--gd-ease),
+      box-shadow var(--gd-mid) var(--gd-ease),
+      background-color var(--gd-fast) var(--gd-ease),
+      color var(--gd-fast) var(--gd-ease);
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px rgba(31, 23, 18, 0.9),
+      0 0 0 4px rgba(210, 167, 99, 0.72),
+      var(--gd-glow-gold);
+  }
+}
+
+@layer components {
+  .gd-shell {
+    @apply relative w-full text-[13px] font-sans rounded-xl border border-gamedin-border;
+    background:
+      linear-gradient(180deg, rgba(53, 39, 31, 0.95) 0%, rgba(31, 23, 18, 0.98) 100%);
+    box-shadow: var(--gd-shadow-deep), inset 0 1px 0 rgba(255, 243, 223, 0.06);
+  }
+
+  .gd-panel {
+    @apply rounded-xl border border-gamedin-border text-gamedin-text;
+    background:
+      linear-gradient(175deg, rgba(65, 46, 36, 0.95) 0%, rgba(42, 31, 25, 0.96) 58%, rgba(31, 23, 18, 0.98) 100%);
+    box-shadow: var(--gd-shadow-soft), inset 0 1px 0 rgba(255, 243, 223, 0.08);
+  }
+
+  .gd-card {
+    @apply rounded-lg border border-gamedin-border bg-gamedin-panel text-gamedin-text;
+    box-shadow: inset 0 1px 0 rgba(255, 243, 223, 0.06);
+  }
+
+  .gd-button {
+    @apply inline-flex items-center justify-center rounded-md border border-gamedin-border bg-gamedin-panel px-2.5 py-1 text-[11px] text-gamedin-text-bright;
+    box-shadow: inset 0 1px 0 rgba(255, 243, 223, 0.08);
+  }
+
+  .gd-button:hover {
+    @apply border-gamedin-accent text-gamedin-text-bright;
+    background: linear-gradient(180deg, rgba(96, 68, 51, 0.98) 0%, rgba(74, 52, 41, 1) 100%);
+    box-shadow: var(--gd-glow-gold), inset 0 1px 0 rgba(255, 243, 223, 0.14);
+    transform: translateY(-1px);
+  }
+
+  .gd-button:active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  .gd-button-primary {
+    @apply border-gamedin-accent text-gamedin-bg;
+    background: linear-gradient(180deg, #e8bf7a 0%, #d2a763 100%);
+    box-shadow: var(--gd-glow-gold), inset 0 1px 0 rgba(255, 243, 223, 0.5);
+  }
+
+  .gd-button-primary:hover {
+    background: linear-gradient(180deg, #f2cb88 0%, #ddb06a 100%);
+  }
+
+  .gd-button-danger {
+    @apply border-gamedin-danger-border text-gamedin-danger;
+    background: linear-gradient(180deg, rgba(112, 50, 58, 0.96) 0%, rgba(84, 38, 45, 1) 100%);
+    box-shadow: var(--gd-glow-burgundy), inset 0 1px 0 rgba(255, 243, 223, 0.1);
+  }
+
+  .gd-button-danger:hover {
+    @apply border-gamedin-danger;
+  }
+
+  .gd-input {
+    @apply rounded-md border border-gamedin-border bg-gamedin-panel px-2 py-1 text-[11px] text-gamedin-text-bright placeholder:text-gamedin-muted;
+    box-shadow: inset 0 1px 0 rgba(255, 243, 223, 0.08);
+  }
+
+  .gd-modal-overlay {
+    @apply fixed inset-0 z-[2000] flex items-center justify-center p-4;
+    background: var(--gd-overlay);
+    backdrop-filter: blur(5px);
+  }
+
+  .gd-modal-card {
+    @apply rounded-xl border border-gamedin-border text-gamedin-text;
+    background:
+      linear-gradient(175deg, rgba(65, 46, 36, 0.95) 0%, rgba(42, 31, 25, 0.96) 58%, rgba(31, 23, 18, 0.98) 100%);
+    box-shadow: var(--gd-shadow-soft), inset 0 1px 0 rgba(255, 243, 223, 0.08);
+    animation: gd-rise var(--gd-mid) var(--gd-ease);
+  }
+
+  .gd-progress-track {
+    @apply h-1.5 overflow-hidden rounded-full border border-gamedin-border;
+    background: linear-gradient(180deg, rgba(31, 23, 18, 0.9) 0%, rgba(53, 39, 31, 0.86) 100%);
+  }
+
+  .gd-progress-fill {
+    @apply block h-full;
+    background: linear-gradient(90deg, #9f7b48 0%, #d2a763 50%, #f2cb88 100%);
+    box-shadow: 0 0 14px rgba(210, 167, 99, 0.4);
+  }
+
+  .gd-badge {
+    @apply rounded-md border border-gamedin-border bg-gamedin-panel px-2 py-0.5 text-[10px] text-gamedin-accent;
+  }
+
+  .gd-feedback {
+    @apply rounded-md border border-gamedin-border bg-gamedin-panel/90 px-2 py-1 text-[11px] text-gamedin-text;
+    animation: gd-fade-in var(--gd-mid) var(--gd-ease);
+  }
+
+  .gd-scroll {
+    scrollbar-color: #7b5d47 #261b15;
+    scrollbar-width: thin;
+  }
+
+  .gd-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .gd-scroll::-webkit-scrollbar-track {
+    background: #261b15;
+  }
+
+  .gd-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: #7b5d47;
+  }
+}
+
+@keyframes gd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gd-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }

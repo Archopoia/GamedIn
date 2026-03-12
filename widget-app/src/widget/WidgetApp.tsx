@@ -50,6 +50,7 @@ interface ActivityEvent {
 
 export function WidgetApp() {
   const [state, setState] = useState<SaveState | null>(null)
+  const hasState = state !== null
   const [message, setMessage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId | null>(null)
   const [profileInput, setProfileInput] = useState({
@@ -161,7 +162,7 @@ export function WidgetApp() {
     processPending()
     const id = setInterval(processPending, POLL_MS)
     return () => clearInterval(id)
-  }, [state !== null])
+  }, [hasState])
 
   const fetchActivity = useCallback(() => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return
@@ -233,7 +234,7 @@ export function WidgetApp() {
       )
     }, DECAY_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [state !== null])
+  }, [hasState])
 
   const sendResize = useCallback((h: number) => {
     try {
@@ -289,8 +290,11 @@ export function WidgetApp() {
 
   if (!state) {
     return (
-      <div className="flex flex-col w-full h-full min-h-[180px] items-center justify-center text-gamedin-muted bg-gradient-to-t from-gamedin-bg-gradient to-gamedin-bg border-t-2 border-gamedin-success">
-        <span>Loading your despair…</span>
+      <div className="gd-shell flex w-full min-h-[180px] items-center justify-center border-t-2 border-gamedin-accent px-4">
+        <div className="gd-panel flex items-center gap-2 px-4 py-3 text-gamedin-muted">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-gamedin-accent" />
+          <span>Loading your despair...</span>
+        </div>
       </div>
     )
   }
@@ -302,13 +306,13 @@ export function WidgetApp() {
 
   return (
     <div
-      className="relative w-full text-[13px] font-sans"
+      className="gd-shell"
       style={{ minHeight: BAR_ARENA_HEIGHT, height: containerHeight }}
     >
       {activeTab && (
         <div
           ref={popupRef}
-          className="absolute left-0 w-[280px] max-w-[280px] max-h-[520px] overflow-y-auto p-3 px-4 bg-gamedin-bg border border-b-0 border-gamedin-border rounded-t-lg shadow-[0_-4px_12px_rgba(0,0,0,0.3)] z-[1000]"
+          className="gd-panel gd-scroll absolute left-0 z-[1000] w-[280px] max-w-[280px] max-h-[520px] overflow-y-auto rounded-t-xl border-b-0 p-3.5"
           style={{ bottom: BAR_ARENA_HEIGHT }}
         >
           {activeTab === 'profile' && (
@@ -346,8 +350,12 @@ export function WidgetApp() {
         </div>
       )}
       <div
-        className="absolute bottom-0 left-0 right-0 flex flex-col bg-gradient-to-t from-gamedin-bg-gradient to-gamedin-bg border-t-2 border-gamedin-success pointer-events-auto"
-        style={{ height: BAR_ARENA_HEIGHT }}
+        className="absolute bottom-0 left-0 right-0 flex flex-col border-t-2 border-gamedin-accent pointer-events-auto"
+        style={{
+          height: BAR_ARENA_HEIGHT,
+          background:
+            'linear-gradient(180deg, rgba(53,39,31,0.92) 0%, rgba(31,23,18,0.98) 100%)',
+        }}
       >
         <WidgetBar
           state={state}
