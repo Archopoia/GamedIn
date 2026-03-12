@@ -40,6 +40,7 @@ export interface ArenaEnemy {
   targetX: number
   targetY: number
   hp: number
+  lastHitAt?: number
 }
 
 export interface ArenaWeapon {

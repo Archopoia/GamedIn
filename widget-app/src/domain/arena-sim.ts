@@ -19,9 +19,33 @@ const ENEMY_VERTICAL_STEER = 0.00025
 const FIRE_INTERVAL_MS = 800
 const PROJECTILE_SPEED = 8
 const PET_CENTER = 400
-const HIT_RADIUS = 25
+const BASE_HIT_RADIUS = 7
+const HIT_RADIUS_BY_DEPTH = 6
+const PROJECTILE_COLLIDER_RADIUS = 3
 const MAX_ENEMY_SPREAD_X = 140
 const MAX_ENEMY_SPREAD_Y = 70
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function pointToSegmentDistance(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): number {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  if (dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1)
+  const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+  const clampedT = Math.max(0, Math.min(1, t))
+  const closestX = x1 + dx * clampedT
+  const closestY = y1 + dy * clampedT
+  return Math.hypot(px - closestX, py - closestY)
+}
 
 /**
  * Pure arena simulation: spawn enemies, move projectiles, resolve hits, update pet mood.
@@ -117,13 +141,25 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
   const hitProjectileIds = new Set<string>()
   const enemyDamage = new Map<string, number>()
 
-  for (const proj of movedProjectiles) {
+  for (let i = 0; i < movedProjectiles.length; i += 1) {
+    const proj = movedProjectiles[i]
+    const previous = allProjectiles[i] ?? proj
     const enemy = enemies.find((e) => e.id === proj.targetEnemyId)
     if (!enemy) {
       hitProjectileIds.add(proj.id)
       continue
     }
-    if (Math.hypot(proj.x - enemy.x, proj.y - enemy.y) < HIT_RADIUS) {
+    const depth = clamp01((enemy.y - HORIZON_Y) / (PET_WORLD_Y - HORIZON_Y))
+    const hitRadius = BASE_HIT_RADIUS + depth * HIT_RADIUS_BY_DEPTH
+    const distanceToPath = pointToSegmentDistance(
+      enemy.x,
+      enemy.y,
+      previous.x,
+      previous.y,
+      proj.x,
+      proj.y,
+    )
+    if (distanceToPath < hitRadius + PROJECTILE_COLLIDER_RADIUS) {
       hitProjectileIds.add(proj.id)
       enemyDamage.set(enemy.id, (enemyDamage.get(enemy.id) ?? 0) + 1)
     }
@@ -140,7 +176,12 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
 
   enemies = enemies.map((e) => {
     const dmg = enemyDamage.get(e.id) ?? 0
-    return { ...e, hp: Math.max(0, e.hp - dmg) }
+    if (dmg <= 0) return e
+    return {
+      ...e,
+      hp: Math.max(0, e.hp - dmg),
+      lastHitAt: now,
+    }
   })
   enemies = enemies.filter((e) => e.hp > 0)
 

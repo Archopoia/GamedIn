@@ -120,6 +120,8 @@ function syncStageFromState(
   for (const enemy of renderEnemies) {
     const projected = projectWorldPoint(enemy.x, enemy.y, width, horizonY, centerY + 18)
     const reveal = clamp01((projected.depth - 0.04) / 0.25)
+    const hitAgeMs = typeof enemy.lastHitAt === 'number' ? now - enemy.lastHitAt : Infinity
+    const hitFlash = clamp01(1 - hitAgeMs / 180)
     const pulse =
       0.1 +
       ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
@@ -134,7 +136,7 @@ function syncStageFromState(
 
     const enemyGfx = new Graphics()
     enemyGfx.rect(0, 0, enemySize, enemySize)
-    enemyGfx.fill(COLORS_HEX.burgundy)
+    enemyGfx.fill(hitFlash > 0 ? COLORS_HEX.danger : COLORS_HEX.burgundy)
     enemyGfx.rect(1.5, 1.5, Math.max(2, enemySize - 3), Math.max(2, enemySize - 3))
     enemyGfx.fill(COLORS_HEX.enemyCore)
     enemyGfx.stroke({ width: 1, color: COLORS_HEX.danger, alpha: reveal })
@@ -142,6 +144,19 @@ function syncStageFromState(
     enemyGfx.x = projected.x - enemySize / 2
     enemyGfx.y = projected.y - enemySize / 2
     app.stage.addChild(enemyGfx)
+
+    if (hitFlash > 0) {
+      const hitRing = new Graphics()
+      hitRing.circle(0, 0, enemySize * (0.55 + (1 - hitFlash) * 0.75))
+      hitRing.stroke({
+        width: 1.5,
+        color: COLORS_HEX.textBright,
+        alpha: hitFlash * reveal,
+      })
+      hitRing.x = projected.x
+      hitRing.y = projected.y
+      app.stage.addChild(hitRing)
+    }
   }
 
   // Projectiles with trails.
