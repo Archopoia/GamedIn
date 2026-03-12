@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyLoggedCommand,
   createInitialState,
-  purchaseBathUpgrade,
+  purchaseUpgrade,
   upsertProfile,
 } from './gameState'
 import { restoreState, serializeState } from './saveSync'
@@ -18,25 +18,25 @@ describe('gameState vertical slice', () => {
     })
 
     expect(result.state.applications).toHaveLength(1)
-    expect(result.state.economy.zen).toBeGreaterThan(0)
+    expect(result.state.economy.points).toBeGreaterThan(0)
     expect(result.events.map((event) => event.type)).toEqual([
       'application_logged',
       'reward_granted',
     ])
   })
 
-  it('supports upgrade purchases from zen balance', () => {
+  it('supports upgrade purchases from points balance', () => {
     const seeded = {
       ...createInitialState(),
       economy: {
-        zen: 300,
-        totalZenEarned: 300,
+        points: 300,
+        totalPointsEarned: 300,
       },
     }
-    const result = purchaseBathUpgrade(seeded)
+    const result = purchaseUpgrade(seeded)
     expect(result.event?.type).toBe('upgrade_purchased')
-    expect(result.state.upgrades.bathLevel).toBe(2)
-    expect(result.state.economy.zen).toBeLessThan(300)
+    expect(result.state.upgrades.upgradeLevel).toBe(2)
+    expect(result.state.economy.points).toBeLessThan(300)
   })
 
   it('restores deterministic save payload', () => {

@@ -2,10 +2,10 @@ import { useEffect, useRef } from 'react'
 import Phaser from 'phaser'
 
 interface GameCanvasProps {
-  guests: number
+  units: number
 }
 
-export function GameCanvas({ guests }: GameCanvasProps) {
+export function GameCanvas({ units }: GameCanvasProps) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
   const textRef = useRef<Phaser.GameObjects.Text | null>(null)
@@ -24,12 +24,12 @@ export function GameCanvas({ guests }: GameCanvasProps) {
       scene: {
         create() {
           this.add.rectangle(150, 60, 270, 95, 0x234f3b, 0.8).setStrokeStyle(2, 0x6ed6a3)
-          this.add.text(16, 16, 'GamedIn Onsen', {
+          this.add.text(16, 16, 'GamedIn', {
             color: '#dfffea',
             fontSize: '14px',
             fontFamily: 'Arial',
           })
-          textRef.current = this.add.text(16, 44, `Guests: ${guests}`, {
+          textRef.current = this.add.text(16, 44, `Units: ${units}`, {
             color: '#dfffea',
             fontSize: '13px',
             fontFamily: 'Arial',
@@ -45,11 +45,11 @@ export function GameCanvas({ guests }: GameCanvasProps) {
       gameRef.current = null
       textRef.current = null
     }
-  }, [guests])
+  }, [units])
 
   useEffect(() => {
-    textRef.current?.setText(`Guests relaxing: ${guests}`)
-  }, [guests])
+    textRef.current?.setText(`Units: ${units}`)
+  }, [units])
 
   return <div className="game-canvas" ref={rootRef} />
 }

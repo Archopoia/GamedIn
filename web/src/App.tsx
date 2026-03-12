@@ -5,13 +5,13 @@ import { DevPanel } from './dev/DevPanel'
 import { isDevMode } from './lib/devMode'
 import { toTelemetryEvent } from './domain/events'
 import { applicationInputSchema, profileSchema } from './domain/validation'
-import { Pasture } from './game/Pasture'
+import { Arena } from './game/Arena'
 import { StatsPanel } from './game/StatsPanel'
 import { initAnalytics, trackEvent } from './lib/analytics'
 import {
   applyLoggedCommand,
   createInitialState,
-  purchaseBathUpgrade,
+  purchaseUpgrade,
   setDailyRewardCap,
   upsertProfile,
 } from './state/gameState'
@@ -43,7 +43,7 @@ function App() {
     preferredRoles: state.profile.preferredRoles.join(', '),
     dailyApplyGoal: state.profile.dailyApplyGoal.toString(),
   })
-  const [message, setMessage] = useState('Welcome to your cozy application loop.')
+  const [message, setMessage] = useState('Welcome to GamedIn.')
   const [capInput, setCapInput] = useState(state.engagement.dailyRewardCap.toString())
   const [activity, setActivity] = useState<ActivityEvent[]>([])
 
@@ -144,13 +144,13 @@ function App() {
 
   const handleUpgradePurchase = () => {
     setState((current) => {
-      const result = purchaseBathUpgrade(current)
+      const result = purchaseUpgrade(current)
       if (!result.event) {
-        setMessage('Not enough Zen for a bath upgrade yet.')
+        setMessage('Not enough points for an upgrade yet.')
         return current
       }
       const telemetry = toTelemetryEvent(result.event, result.state)
-      setMessage(`Bath upgraded to level ${result.state.upgrades.bathLevel}.`)
+      setMessage(`Upgrade level ${result.state.upgrades.upgradeLevel}.`)
       return {
         ...result.state,
         telemetryQueue: [...result.state.telemetryQueue, telemetry].slice(-100),
@@ -174,8 +174,8 @@ function App() {
           <span className="dev-badge">{isDevMode && '[Dev]'}</span>
         </div>
         <div className="header-metrics">
-          <span title="Zen currency">Zen {state.economy.zen}</span>
-          <span title="Active guests">Guests {state.guests.active}</span>
+          <span title="Points">Pts {state.economy.points}</span>
+          <span title="Units">Units {state.units.active}</span>
           <span title="Level">Lv {state.progression.level}</span>
           <span title="Streak">Streak {state.engagement.streakDays}d</span>
         </div>
@@ -299,8 +299,8 @@ function App() {
                 <h2>Upgrade Shop</h2>
                 <div className="shop-row">
                   <div>
-                    <p>Bath level: {state.upgrades.bathLevel}</p>
-                    <p>Next: {state.upgrades.bathUpgradeCost} Zen</p>
+                    <p>Upgrade level: {state.upgrades.upgradeLevel}</p>
+                    <p>Next: {state.upgrades.upgradeCost} pts</p>
                   </div>
                   <button type="button" onClick={handleUpgradePurchase}>
                     Buy upgrade
@@ -316,8 +316,8 @@ function App() {
         </section>
       </div>
 
-      <footer className="pasture-footer">
-        <Pasture state={state} setState={setState} setMessage={setMessage} />
+      <footer className="arena-footer">
+        <Arena state={state} setState={setState} setMessage={setMessage} />
       </footer>
     </main>
   )

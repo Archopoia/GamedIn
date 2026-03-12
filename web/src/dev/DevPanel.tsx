@@ -55,9 +55,9 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
     }
     next = {
       ...next,
-      economy: { zen: 500, totalZenEarned: 500 },
-      guests: { active: 12, happiestGuestMood: 85 },
-      upgrades: { bathLevel: 3, bathUpgradeCost: 200 },
+      economy: { points: 500, totalPointsEarned: 500 },
+      units: { active: 12, happiestMood: 85 },
+      upgrades: { upgradeLevel: 3, upgradeCost: 200 },
       engagement: {
         ...next.engagement,
         streakDays: 7,
@@ -67,7 +67,7 @@ export function DevPanel({ state, setState, setMessage }: DevPanelProps) {
     }
     setState(next)
     saveState(next)
-    setMessage('Dev: Seeded rich state (zen, guests, upgrades, streak)')
+    setMessage('Dev: Seeded rich state')
   }
 
   const handleReset = () => {

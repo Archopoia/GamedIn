@@ -15,7 +15,7 @@ Zero-effort job application tracking. When you apply on LinkedIn, Indeed, Glassd
 1. **Job site content script** runs on LinkedIn, Indeed, Glassdoor, Greenhouse, Lever. A MutationObserver watches for apply-success text (e.g. "Application sent", "Thank you").
 2. When detected, it extracts job title and company and sends to the extension background.
 3. **Background** stores the log in `chrome.storage.local`.
-4. **Embedded widget** (floating button on job pages) polls for pending logs, processes them, and shows Zen, streak, pasture. Click to expand.
+4. **Embedded widget** (floating button on job pages) polls for pending logs, processes them, and shows points, streak, and stats. Click to expand.
 5. **Standalone game** (gamedin.app) also receives logs via `content-gamedin.js` when that tab is open.
 
 ## Activity Tracking
@@ -45,4 +45,4 @@ For a custom domain, add it to `manifest.json` under `content_scripts[1].matches
 
 - Chrome (Manifest V3)
 - **Embedded widget**: Stats and rewards appear on job pages. No separate tab needed.
-- **Full game**: Open gamedin.app for the full pasture, shop, and profile. State is stored in the extension (widget) or localStorage (standalone).
+- **Full game**: Open gamedin.app for the full experience, shop, and profile. State is stored in the extension (widget) or localStorage (standalone).

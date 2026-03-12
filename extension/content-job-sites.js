@@ -35,7 +35,8 @@
       wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;width:100%;height:180px;z-index:2147483647;pointer-events:none;'
       const iframe = document.createElement('iframe')
       iframe.id = 'gamedin-widget-iframe'
-      iframe.src = chrome.runtime.getURL('widget/widget.html')
+      const isUnpacked = !chrome.runtime.getManifest().update_url
+      iframe.src = chrome.runtime.getURL('widget/widget.html' + (isUnpacked ? '?dev=1' : ''))
       iframe.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:100%;border:none;pointer-events:auto;'
       wrap.appendChild(iframe)
       document.body.appendChild(wrap)

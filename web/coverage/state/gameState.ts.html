@@ -766,18 +766,18 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import {
-  critterForApplication,
-  getOrCreatePasture,
-  tickPastureDrops,
-  unlockNextCritter,
-} from '../domain/pasture'
-import { computeBathTier, computeLevel } from '../domain/progression'
+  getOrCreateArena,
+  tickArenaDrops,
+  unitForApplication,
+  unlockNextType,
+} from '../domain/arena'
+import { computeLevel, computeUpgradeTier } from '../domain/progression'
 import { computeReward, type RewardBreakdown } from '../domain/reward'
 import type { DomainEvent } from '../domain/events'
 import type {
   ApplicationLog,
   ApplicationSource,
-  PastureAnimal,
+  ArenaUnit,
   SaveStateV1,
   UpgradeState,
 } from '../domain/types'
@@ -796,8 +796,8 @@ export interface ApplyCommandResult {
 }
 &nbsp;
 const DEFAULT_UPGRADES: UpgradeState = {
-  bathLevel: 1,
-  bathUpgradeCost: 80,
+  upgradeLevel: 1,
+  upgradeCost: 80,
 }
 &nbsp;
 function todayKey(now: Date): string {
@@ -823,17 +823,17 @@ export function createInitialState(): SaveStateV1 {
     },
     applications: [],
     economy: {
-      zen: 0,
-      totalZenEarned: 0,
+      points: 0,
+      totalPointsEarned: 0,
     },
-    guests: {
+    units: {
       active: 1,
-      happiestGuestMood: 50,
+      happiestMood: 50,
     },
     progression: {
       level: 1,
       totalApplications: 0,
-      unlockedBathTier: 1,
+      unlockedUpgradeTier: 1,
     },
     engagement: {
       streakDays: 0,
@@ -843,14 +843,14 @@ export function createInitialState(): SaveStateV1 {
       dailyRewardCap: 5,
     },
     upgrades: DEFAULT_UPGRADES,
-    pasture: {
-      animals: [
+    arena: {
+      units: [
         {
           id: crypto.randomUUID(),
           type: 'rabbit',
           mood: 70,
-          lastFedAt: null,
-          lastPettedAt: null,
+          lastBoostedAt: null,
+          lastInteractedAt: null,
           x: 80,
           facing: 1,
           coinAccumulated: 0,
@@ -858,8 +858,8 @@ export function createInitialState(): SaveStateV1 {
       ],
       droppings: [],
       coins: [],
-      unlockedCritters: ['rabbit'],
-      pastureLevel: 1,
+      unlockedTypes: ['rabbit'],
+      arenaLevel: 1,
     },
     telemetryQueue: [],
   }
@@ -914,60 +914,60 @@ export function applyLoggedCommand(
   )
   const totalApplications = state.progression.totalApplications + 1
   const level = computeLevel(totalApplications)
-  const unlockedBathTier = computeBathTier(level)
+  const unlockedUpgradeTier = computeUpgradeTier(level)
 &nbsp;
-  const pasture = getOrCreatePasture(state)
-  const critterType = critterForApplication(
+  const arena = getOrCreateArena(state)
+  const unitType = unitForApplication(
     input.source,
     input.qualityScore,
-    pasture.unlockedCritters,
+    arena.unlockedTypes,
   )
-  const newAnimals: PastureAnimal[] = []
-  for (let i = 0; i &lt; reward.guestDelta; i++) {
-    const maxX = pasture.animals.length &gt; 0
-      ? Math.max(...pasture.animals.map((a) =&gt; a.x)) + 60
+  const newUnits: ArenaUnit[] = []
+  for (let i = 0; i &lt; reward.unitDelta; i++) {
+    const maxX = arena.units.length &gt; 0
+      ? Math.max(...arena.units.map((a) =&gt; a.x)) + 60
       : <span class="branch-1 cbranch-no" title="branch not covered" >80</span>
-    newAnimals.push({
+    newUnits.push({
       id: crypto.randomUUID(),
-      type: critterType,
+      type: unitType,
       mood: 60 + input.qualityScore * 8,
-      lastFedAt: null,
-      lastPettedAt: null,
+      lastBoostedAt: null,
+      lastInteractedAt: null,
       x: maxX + i * 50,
       facing: 1,
       coinAccumulated: 0,
     })
   }
-  const nextUnlocked = pasture.unlockedCritters
-  const maybeUnlock = unlockNextCritter(nextUnlocked, totalApplications)
+  const nextUnlocked = arena.unlockedTypes
+  const maybeUnlock = unlockNextType(nextUnlocked, totalApplications)
   <span class="missing-if-branch" title="if path not taken" >I</span>if (maybeUnlock &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >!nextUnlocked.includes(maybeUnlock)) {</span>
 <span class="cstat-no" title="statement not covered" >    nextUnlocked.push(maybeUnlock)</span>
   }
 &nbsp;
-  const nextPasture: SaveStateV1['pasture'] = {
-    ...pasture,
-    animals: [...pasture.animals, ...newAnimals].slice(0, 50),
-    droppings: pasture.droppings ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
-    coins: pasture.coins ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
-    unlockedCritters: [...nextUnlocked],
+  const nextArena: SaveStateV1['arena'] = {
+    ...arena,
+    units: [...arena.units, ...newUnits].slice(0, 50),
+    droppings: arena.droppings ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
+    coins: arena.coins ?? <span class="branch-1 cbranch-no" title="branch not covered" >[],</span>
+    unlockedTypes: [...nextUnlocked],
   }
 &nbsp;
   const nextState: SaveStateV1 = {
     ...state,
     applications: [application, ...state.applications].slice(0, 200),
     economy: {
-      zen: state.economy.zen + reward.zenAwarded,
-      totalZenEarned: state.economy.totalZenEarned + reward.zenAwarded,
+      points: state.economy.points + reward.pointsAwarded,
+      totalPointsEarned: state.economy.totalPointsEarned + reward.pointsAwarded,
     },
-    guests: {
-      active: nextPasture.animals.length,
-      happiestGuestMood: Math.min(100, state.guests.happiestGuestMood + input.qualityScore),
+    units: {
+      active: nextArena.units.length,
+      happiestMood: Math.min(100, state.units.happiestMood + input.qualityScore),
     },
-    pasture: nextPasture,
+    arena: nextArena,
     progression: {
       totalApplications,
       level,
-      unlockedBathTier,
+      unlockedUpgradeTier,
     },
     engagement: {
       ...state.engagement,
@@ -989,32 +989,32 @@ export function applyLoggedCommand(
       {
         type: 'reward_granted',
         payload: {
-          zenAwarded: reward.zenAwarded,
-          guestDelta: reward.guestDelta,
+          pointsAwarded: reward.pointsAwarded,
+          unitDelta: reward.unitDelta,
         },
       },
     ],
   }
 }
 &nbsp;
-export function purchaseBathUpgrade(state: SaveStateV1): {
+export function purchaseUpgrade(state: SaveStateV1): {
   state: SaveStateV1
   event: DomainEvent | null
 } {
-  <span class="missing-if-branch" title="if path not taken" >I</span>if (state.economy.zen &lt; state.upgrades.bathUpgradeCost) {
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (state.economy.points &lt; state.upgrades.upgradeCost) {
 <span class="cstat-no" title="statement not covered" >    return { state, event: null }</span>
   }
 &nbsp;
-  const nextLevel = state.upgrades.bathLevel + 1
+  const nextLevel = state.upgrades.upgradeLevel + 1
   const nextState: SaveStateV1 = {
     ...state,
     economy: {
       ...state.economy,
-      zen: state.economy.zen - state.upgrades.bathUpgradeCost,
+      points: state.economy.points - state.upgrades.upgradeCost,
     },
     upgrades: {
-      bathLevel: nextLevel,
-      bathUpgradeCost: Math.round(state.upgrades.bathUpgradeCost * 1.8),
+      upgradeLevel: nextLevel,
+      upgradeCost: Math.round(state.upgrades.upgradeCost * 1.8),
     },
   }
 &nbsp;
@@ -1023,7 +1023,7 @@ export function purchaseBathUpgrade(state: SaveStateV1): {
     event: {
       type: 'upgrade_purchased',
       payload: {
-        upgrade: 'bath',
+        upgrade: 'facility',
         newLevel: nextLevel,
       },
     },
@@ -1040,81 +1040,81 @@ export function <span class="fstat-no" title="function not covered" >setDailyRew
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >petAnimal(s</span>tate: SaveStateV1, animalId: string): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const animals = <span class="cstat-no" title="statement not covered" >pasture.animals.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === animalId</span>
-      ? { ...a, mood: Math.min(100, a.mood + 10), lastPettedAt: new Date().toISOString() }
+export function <span class="fstat-no" title="function not covered" >interactUnit(s</span>tate: SaveStateV1, unitId: string): SaveStateV1 {
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === unitId</span>
+      ? { ...a, mood: Math.min(100, a.mood + 10), lastInteractedAt: new Date().toISOString() }
       : a,
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, pasture: { ...pasture, animals } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >feedAnimal(s</span>tate: SaveStateV1, animalId: string): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const animals = <span class="cstat-no" title="statement not covered" >pasture.animals.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === animalId</span>
-      ? { ...a, mood: Math.min(100, a.mood + 15), lastFedAt: new Date().toISOString() }
+export function <span class="fstat-no" title="function not covered" >boostUnit(s</span>tate: SaveStateV1, unitId: string): SaveStateV1 {
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === unitId</span>
+      ? { ...a, mood: Math.min(100, a.mood + 15), lastBoostedAt: new Date().toISOString() }
       : a,
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, pasture: { ...pasture, animals } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
 }
 &nbsp;
 export function <span class="fstat-no" title="function not covered" >cleanDropping(s</span>tate: SaveStateV1, droppingId: string): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const dropping = <span class="cstat-no" title="statement not covered" >pasture.droppings.find(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id === droppingId)</span></span>
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const dropping = <span class="cstat-no" title="statement not covered" >arena.droppings.find(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id === droppingId)</span></span>
 <span class="cstat-no" title="statement not covered" >  if (!dropping) <span class="cstat-no" title="statement not covered" >return state</span></span>
-  const droppings = <span class="cstat-no" title="statement not covered" >pasture.droppings.filter(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id !== droppingId)</span></span>
-  const animals = <span class="cstat-no" title="statement not covered" >pasture.animals.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === dropping.animalId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,</span>
+  const droppings = <span class="cstat-no" title="statement not covered" >arena.droppings.filter(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; <span class="cstat-no" title="statement not covered" >d.id !== droppingId)</span></span>
+  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === dropping.unitId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,</span>
   )
-  const zenGain = <span class="cstat-no" title="statement not covered" >2</span>
+  const pointsGain = <span class="cstat-no" title="statement not covered" >2</span>
 <span class="cstat-no" title="statement not covered" >  return {</span>
     ...state,
-    pasture: { ...pasture, droppings, animals },
+    arena: { ...arena, droppings, units },
     economy: {
-      zen: state.economy.zen + zenGain,
-      totalZenEarned: state.economy.totalZenEarned + zenGain,
+      points: state.economy.points + pointsGain,
+      totalPointsEarned: state.economy.totalPointsEarned + pointsGain,
     },
   }
 }
 &nbsp;
 export function <span class="fstat-no" title="function not covered" >collectCoin(s</span>tate: SaveStateV1, coinId: string): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const coin = <span class="cstat-no" title="statement not covered" >pasture.coins.find(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id === coinId)</span></span>
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const coin = <span class="cstat-no" title="statement not covered" >arena.coins.find(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id === coinId)</span></span>
 <span class="cstat-no" title="statement not covered" >  if (!coin) <span class="cstat-no" title="statement not covered" >return state</span></span>
-  const coins = <span class="cstat-no" title="statement not covered" >pasture.coins.filter(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id !== coinId)</span></span>
+  const coins = <span class="cstat-no" title="statement not covered" >arena.coins.filter(<span class="fstat-no" title="function not covered" >(c</span>) =&gt; <span class="cstat-no" title="statement not covered" >c.id !== coinId)</span></span>
 <span class="cstat-no" title="statement not covered" >  return {</span>
     ...state,
-    pasture: { ...pasture, coins },
+    arena: { ...arena, coins },
     economy: {
-      zen: state.economy.zen + coin.amount,
-      totalZenEarned: state.economy.totalZenEarned + coin.amount,
+      points: state.economy.points + coin.amount,
+      totalPointsEarned: state.economy.totalPointsEarned + coin.amount,
     },
   }
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >tickPastureCoins(</span>
+export function <span class="fstat-no" title="function not covered" >tickArenaCoins(</span>
   state: SaveStateV1,
   elapsedMs: number,
-  animalPositions?: Record&lt;string, number&gt;,
+  unitPositions?: Record&lt;string, number&gt;,
 ): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const { pasture: nextPasture <span class="cstat-no" title="statement not covered" >} = tickPastureDrops(pasture, elapsedMs, animalPositions)</span>
-<span class="cstat-no" title="statement not covered" >  return { ...state, pasture: nextPasture }</span>
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const { arena: nextArena <span class="cstat-no" title="statement not covered" >} = tickArenaDrops(arena, elapsedMs, unitPositions)</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: nextArena }</span>
 }
 &nbsp;
-export function <span class="fstat-no" title="function not covered" >updateAnimalPosition(</span>
+export function <span class="fstat-no" title="function not covered" >updateUnitPosition(</span>
   state: SaveStateV1,
-  animalId: string,
+  unitId: string,
   x: number,
   facing: 1 | -1,
 ): SaveStateV1 {
-  const <span class="cstat-no" title="statement not covered" >pasture = getOrCreatePasture(state)</span>
-  const animals = <span class="cstat-no" title="statement not covered" >pasture.animals.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    a.id === animalId ? { ...a, x, facing } : a,</span>
+  const <span class="cstat-no" title="statement not covered" >arena = getOrCreateArena(state)</span>
+  const units = <span class="cstat-no" title="statement not covered" >arena.units.map(<span class="fstat-no" title="function not covered" >(a</span>) =&gt;</span>
+<span class="cstat-no" title="statement not covered" >    a.id === unitId ? { ...a, x, facing } : a,</span>
   )
-<span class="cstat-no" title="statement not covered" >  return { ...state, pasture: { ...pasture, animals } }</span>
+<span class="cstat-no" title="statement not covered" >  return { ...state, arena: { ...arena, units } }</span>
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -1123,7 +1123,7 @@ export function <span class="fstat-no" title="function not covered" >updateAnima
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-11T09:14:53.169Z
+                at 2026-03-12T09:02:22.261Z
             </div>
         <script src="../prettify.js"></script>
         <script>

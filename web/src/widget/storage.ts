@@ -4,22 +4,29 @@
  */
 
 import type { SaveStateV1 } from '../domain/types'
-import { getOrCreatePasture } from '../domain/pasture'
+import { getOrCreateArena } from '../domain/arena'
 import { createInitialState } from '../state/gameState'
 
 const STORAGE_KEY = 'gamedin.save.v1'
 
-function isSaveState(value: unknown): value is SaveStateV1 {
+function isSaveStateV1(value: unknown): value is SaveStateV1 {
   if (typeof value !== 'object' || value === null) return false
-  const c = value as Partial<SaveStateV1>
-  return c.version === 1 && Array.isArray(c.applications)
+  const c = value as Record<string, unknown>
+  if (c.version !== 1 || !Array.isArray(c.applications)) return false
+  const economy = c.economy as Record<string, unknown> | undefined
+  const units = c.units as Record<string, unknown> | undefined
+  const upgrades = c.upgrades as Record<string, unknown> | undefined
+  if (!economy || typeof economy.points !== 'number') return false
+  if (!units || typeof units.active !== 'number') return false
+  if (!upgrades || typeof upgrades.upgradeLevel !== 'number') return false
+  return true
 }
 
 export function restoreState(parsed: unknown): SaveStateV1 {
-  if (!isSaveState(parsed)) return createInitialState()
+  if (!isSaveStateV1(parsed)) return createInitialState()
   const state = parsed as SaveStateV1
-  if (!state.pasture || state.pasture.animals.length === 0) {
-    return { ...state, pasture: getOrCreatePasture(state) }
+  if (!state.arena || state.arena.units.length === 0) {
+    return { ...state, arena: getOrCreateArena(state) }
   }
   return state
 }

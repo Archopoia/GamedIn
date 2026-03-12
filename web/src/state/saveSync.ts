@@ -1,15 +1,20 @@
 import type { SaveStateV1 } from '../domain/types'
-import { getOrCreatePasture } from '../domain/pasture'
+import { getOrCreateArena } from '../domain/arena'
 import { createInitialState } from './gameState'
 
 const STORAGE_KEY = 'gamedin.save.v1'
 
-function isSaveState(value: unknown): value is SaveStateV1 {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  const candidate = value as Partial<SaveStateV1>
-  return candidate.version === 1 && Array.isArray(candidate.applications)
+function isSaveStateV1(value: unknown): value is SaveStateV1 {
+  if (typeof value !== 'object' || value === null) return false
+  const c = value as Record<string, unknown>
+  if (c.version !== 1 || !Array.isArray(c.applications)) return false
+  const economy = c.economy as Record<string, unknown> | undefined
+  const units = c.units as Record<string, unknown> | undefined
+  const upgrades = c.upgrades as Record<string, unknown> | undefined
+  if (!economy || typeof economy.points !== 'number') return false
+  if (!units || typeof units.active !== 'number') return false
+  if (!upgrades || typeof upgrades.upgradeLevel !== 'number') return false
+  return true
 }
 
 export function serializeState(state: SaveStateV1): string {
@@ -17,22 +22,23 @@ export function serializeState(state: SaveStateV1): string {
 }
 
 export function restoreState(serialized: string): SaveStateV1 {
-  const parsed = JSON.parse(serialized) as unknown
-  if (!isSaveState(parsed)) {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(serialized)
+  } catch {
     return createInitialState()
   }
+  if (!isSaveStateV1(parsed)) return createInitialState()
   const state = parsed as SaveStateV1
-  if (!state.pasture || state.pasture.animals.length === 0) {
-    return { ...state, pasture: getOrCreatePasture(state) }
+  if (!state.arena || state.arena.units.length === 0) {
+    return { ...state, arena: getOrCreateArena(state) }
   }
   return state
 }
 
 export function loadState(): SaveStateV1 {
   const saved = localStorage.getItem(STORAGE_KEY)
-  if (!saved) {
-    return createInitialState()
-  }
+  if (!saved) return createInitialState()
   try {
     return restoreState(saved)
   } catch {

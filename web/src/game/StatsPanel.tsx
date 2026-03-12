@@ -46,8 +46,8 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
       <h2>Gamer Stats</h2>
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-value">{state.economy.zen}</span>
-          <span className="stat-label">Zen</span>
+          <span className="stat-value">{state.economy.points}</span>
+          <span className="stat-label">Points</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{state.progression.totalApplications}</span>
@@ -66,8 +66,8 @@ export function StatsPanel({ state, activity, onRefresh }: StatsPanelProps) {
           <span className="stat-label">Streak</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">{state.guests.active}</span>
-          <span className="stat-label">Guests</span>
+          <span className="stat-value">{state.units.active}</span>
+          <span className="stat-label">Units</span>
         </div>
       </div>
 

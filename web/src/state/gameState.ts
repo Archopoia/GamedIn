@@ -1,16 +1,16 @@
 import {
-  critterForApplication,
-  getOrCreatePasture,
-  tickPastureDrops,
-  unlockNextCritter,
-} from '../domain/pasture'
-import { computeBathTier, computeLevel } from '../domain/progression'
+  getOrCreateArena,
+  tickArenaDrops,
+  unitForApplication,
+  unlockNextType,
+} from '../domain/arena'
+import { computeLevel, computeUpgradeTier } from '../domain/progression'
 import { computeReward, type RewardBreakdown } from '../domain/reward'
 import type { DomainEvent } from '../domain/events'
 import type {
   ApplicationLog,
   ApplicationSource,
-  PastureAnimal,
+  ArenaUnit,
   SaveStateV1,
   UpgradeState,
 } from '../domain/types'
@@ -29,8 +29,8 @@ export interface ApplyCommandResult {
 }
 
 const DEFAULT_UPGRADES: UpgradeState = {
-  bathLevel: 1,
-  bathUpgradeCost: 80,
+  upgradeLevel: 1,
+  upgradeCost: 80,
 }
 
 function todayKey(now: Date): string {
@@ -56,17 +56,17 @@ export function createInitialState(): SaveStateV1 {
     },
     applications: [],
     economy: {
-      zen: 0,
-      totalZenEarned: 0,
+      points: 0,
+      totalPointsEarned: 0,
     },
-    guests: {
+    units: {
       active: 1,
-      happiestGuestMood: 50,
+      happiestMood: 50,
     },
     progression: {
       level: 1,
       totalApplications: 0,
-      unlockedBathTier: 1,
+      unlockedUpgradeTier: 1,
     },
     engagement: {
       streakDays: 0,
@@ -76,14 +76,14 @@ export function createInitialState(): SaveStateV1 {
       dailyRewardCap: 5,
     },
     upgrades: DEFAULT_UPGRADES,
-    pasture: {
-      animals: [
+    arena: {
+      units: [
         {
           id: crypto.randomUUID(),
           type: 'rabbit',
           mood: 70,
-          lastFedAt: null,
-          lastPettedAt: null,
+          lastBoostedAt: null,
+          lastInteractedAt: null,
           x: 80,
           facing: 1,
           coinAccumulated: 0,
@@ -91,8 +91,8 @@ export function createInitialState(): SaveStateV1 {
       ],
       droppings: [],
       coins: [],
-      unlockedCritters: ['rabbit'],
-      pastureLevel: 1,
+      unlockedTypes: ['rabbit'],
+      arenaLevel: 1,
     },
     telemetryQueue: [],
   }
@@ -147,60 +147,60 @@ export function applyLoggedCommand(
   )
   const totalApplications = state.progression.totalApplications + 1
   const level = computeLevel(totalApplications)
-  const unlockedBathTier = computeBathTier(level)
+  const unlockedUpgradeTier = computeUpgradeTier(level)
 
-  const pasture = getOrCreatePasture(state)
-  const critterType = critterForApplication(
+  const arena = getOrCreateArena(state)
+  const unitType = unitForApplication(
     input.source,
     input.qualityScore,
-    pasture.unlockedCritters,
+    arena.unlockedTypes,
   )
-  const newAnimals: PastureAnimal[] = []
-  for (let i = 0; i < reward.guestDelta; i++) {
-    const maxX = pasture.animals.length > 0
-      ? Math.max(...pasture.animals.map((a) => a.x)) + 60
+  const newUnits: ArenaUnit[] = []
+  for (let i = 0; i < reward.unitDelta; i++) {
+    const maxX = arena.units.length > 0
+      ? Math.max(...arena.units.map((a) => a.x)) + 60
       : 80
-    newAnimals.push({
+    newUnits.push({
       id: crypto.randomUUID(),
-      type: critterType,
+      type: unitType,
       mood: 60 + input.qualityScore * 8,
-      lastFedAt: null,
-      lastPettedAt: null,
+      lastBoostedAt: null,
+      lastInteractedAt: null,
       x: maxX + i * 50,
       facing: 1,
       coinAccumulated: 0,
     })
   }
-  const nextUnlocked = pasture.unlockedCritters
-  const maybeUnlock = unlockNextCritter(nextUnlocked, totalApplications)
+  const nextUnlocked = arena.unlockedTypes
+  const maybeUnlock = unlockNextType(nextUnlocked, totalApplications)
   if (maybeUnlock && !nextUnlocked.includes(maybeUnlock)) {
     nextUnlocked.push(maybeUnlock)
   }
 
-  const nextPasture: SaveStateV1['pasture'] = {
-    ...pasture,
-    animals: [...pasture.animals, ...newAnimals].slice(0, 50),
-    droppings: pasture.droppings ?? [],
-    coins: pasture.coins ?? [],
-    unlockedCritters: [...nextUnlocked],
+  const nextArena: SaveStateV1['arena'] = {
+    ...arena,
+    units: [...arena.units, ...newUnits].slice(0, 50),
+    droppings: arena.droppings ?? [],
+    coins: arena.coins ?? [],
+    unlockedTypes: [...nextUnlocked],
   }
 
   const nextState: SaveStateV1 = {
     ...state,
     applications: [application, ...state.applications].slice(0, 200),
     economy: {
-      zen: state.economy.zen + reward.zenAwarded,
-      totalZenEarned: state.economy.totalZenEarned + reward.zenAwarded,
+      points: state.economy.points + reward.pointsAwarded,
+      totalPointsEarned: state.economy.totalPointsEarned + reward.pointsAwarded,
     },
-    guests: {
-      active: nextPasture.animals.length,
-      happiestGuestMood: Math.min(100, state.guests.happiestGuestMood + input.qualityScore),
+    units: {
+      active: nextArena.units.length,
+      happiestMood: Math.min(100, state.units.happiestMood + input.qualityScore),
     },
-    pasture: nextPasture,
+    arena: nextArena,
     progression: {
       totalApplications,
       level,
-      unlockedBathTier,
+      unlockedUpgradeTier,
     },
     engagement: {
       ...state.engagement,
@@ -222,32 +222,32 @@ export function applyLoggedCommand(
       {
         type: 'reward_granted',
         payload: {
-          zenAwarded: reward.zenAwarded,
-          guestDelta: reward.guestDelta,
+          pointsAwarded: reward.pointsAwarded,
+          unitDelta: reward.unitDelta,
         },
       },
     ],
   }
 }
 
-export function purchaseBathUpgrade(state: SaveStateV1): {
+export function purchaseUpgrade(state: SaveStateV1): {
   state: SaveStateV1
   event: DomainEvent | null
 } {
-  if (state.economy.zen < state.upgrades.bathUpgradeCost) {
+  if (state.economy.points < state.upgrades.upgradeCost) {
     return { state, event: null }
   }
 
-  const nextLevel = state.upgrades.bathLevel + 1
+  const nextLevel = state.upgrades.upgradeLevel + 1
   const nextState: SaveStateV1 = {
     ...state,
     economy: {
       ...state.economy,
-      zen: state.economy.zen - state.upgrades.bathUpgradeCost,
+      points: state.economy.points - state.upgrades.upgradeCost,
     },
     upgrades: {
-      bathLevel: nextLevel,
-      bathUpgradeCost: Math.round(state.upgrades.bathUpgradeCost * 1.8),
+      upgradeLevel: nextLevel,
+      upgradeCost: Math.round(state.upgrades.upgradeCost * 1.8),
     },
   }
 
@@ -256,7 +256,7 @@ export function purchaseBathUpgrade(state: SaveStateV1): {
     event: {
       type: 'upgrade_purchased',
       payload: {
-        upgrade: 'bath',
+        upgrade: 'facility',
         newLevel: nextLevel,
       },
     },
@@ -273,79 +273,79 @@ export function setDailyRewardCap(state: SaveStateV1, cap: number): SaveStateV1 
   }
 }
 
-export function petAnimal(state: SaveStateV1, animalId: string): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const animals = pasture.animals.map((a) =>
-    a.id === animalId
-      ? { ...a, mood: Math.min(100, a.mood + 10), lastPettedAt: new Date().toISOString() }
+export function interactUnit(state: SaveStateV1, unitId: string): SaveStateV1 {
+  const arena = getOrCreateArena(state)
+  const units = arena.units.map((a) =>
+    a.id === unitId
+      ? { ...a, mood: Math.min(100, a.mood + 10), lastInteractedAt: new Date().toISOString() }
       : a,
   )
-  return { ...state, pasture: { ...pasture, animals } }
+  return { ...state, arena: { ...arena, units } }
 }
 
-export function feedAnimal(state: SaveStateV1, animalId: string): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const animals = pasture.animals.map((a) =>
-    a.id === animalId
-      ? { ...a, mood: Math.min(100, a.mood + 15), lastFedAt: new Date().toISOString() }
+export function boostUnit(state: SaveStateV1, unitId: string): SaveStateV1 {
+  const arena = getOrCreateArena(state)
+  const units = arena.units.map((a) =>
+    a.id === unitId
+      ? { ...a, mood: Math.min(100, a.mood + 15), lastBoostedAt: new Date().toISOString() }
       : a,
   )
-  return { ...state, pasture: { ...pasture, animals } }
+  return { ...state, arena: { ...arena, units } }
 }
 
 export function cleanDropping(state: SaveStateV1, droppingId: string): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const dropping = pasture.droppings.find((d) => d.id === droppingId)
+  const arena = getOrCreateArena(state)
+  const dropping = arena.droppings.find((d) => d.id === droppingId)
   if (!dropping) return state
-  const droppings = pasture.droppings.filter((d) => d.id !== droppingId)
-  const animals = pasture.animals.map((a) =>
-    a.id === dropping.animalId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,
+  const droppings = arena.droppings.filter((d) => d.id !== droppingId)
+  const units = arena.units.map((a) =>
+    a.id === dropping.unitId ? { ...a, mood: Math.min(100, a.mood + 5) } : a,
   )
-  const zenGain = 2
+  const pointsGain = 2
   return {
     ...state,
-    pasture: { ...pasture, droppings, animals },
+    arena: { ...arena, droppings, units },
     economy: {
-      zen: state.economy.zen + zenGain,
-      totalZenEarned: state.economy.totalZenEarned + zenGain,
+      points: state.economy.points + pointsGain,
+      totalPointsEarned: state.economy.totalPointsEarned + pointsGain,
     },
   }
 }
 
 export function collectCoin(state: SaveStateV1, coinId: string): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const coin = pasture.coins.find((c) => c.id === coinId)
+  const arena = getOrCreateArena(state)
+  const coin = arena.coins.find((c) => c.id === coinId)
   if (!coin) return state
-  const coins = pasture.coins.filter((c) => c.id !== coinId)
+  const coins = arena.coins.filter((c) => c.id !== coinId)
   return {
     ...state,
-    pasture: { ...pasture, coins },
+    arena: { ...arena, coins },
     economy: {
-      zen: state.economy.zen + coin.amount,
-      totalZenEarned: state.economy.totalZenEarned + coin.amount,
+      points: state.economy.points + coin.amount,
+      totalPointsEarned: state.economy.totalPointsEarned + coin.amount,
     },
   }
 }
 
-export function tickPastureCoins(
+export function tickArenaCoins(
   state: SaveStateV1,
   elapsedMs: number,
-  animalPositions?: Record<string, number>,
+  unitPositions?: Record<string, number>,
 ): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const { pasture: nextPasture } = tickPastureDrops(pasture, elapsedMs, animalPositions)
-  return { ...state, pasture: nextPasture }
+  const arena = getOrCreateArena(state)
+  const { arena: nextArena } = tickArenaDrops(arena, elapsedMs, unitPositions)
+  return { ...state, arena: nextArena }
 }
 
-export function updateAnimalPosition(
+export function updateUnitPosition(
   state: SaveStateV1,
-  animalId: string,
+  unitId: string,
   x: number,
   facing: 1 | -1,
 ): SaveStateV1 {
-  const pasture = getOrCreatePasture(state)
-  const animals = pasture.animals.map((a) =>
-    a.id === animalId ? { ...a, x, facing } : a,
+  const arena = getOrCreateArena(state)
+  const units = arena.units.map((a) =>
+    a.id === unitId ? { ...a, x, facing } : a,
   )
-  return { ...state, pasture: { ...pasture, animals } }
+  return { ...state, arena: { ...arena, units } }
 }

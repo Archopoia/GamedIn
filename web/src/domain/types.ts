@@ -1,6 +1,6 @@
 export type ApplicationSource = 'linkedin' | 'indeed' | 'glassdoor' | 'other'
 
-export type CritterType =
+export type UnitType =
   | 'rabbit'
   | 'bird'
   | 'cat'
@@ -9,28 +9,28 @@ export type CritterType =
   | 'owl'
   | 'hedgehog'
 
-export interface PastureAnimal {
+export interface ArenaUnit {
   id: string
-  type: CritterType
+  type: UnitType
   mood: number
-  lastFedAt: string | null
-  lastPettedAt: string | null
+  lastBoostedAt: string | null
+  lastInteractedAt: string | null
   x: number
   facing: 1 | -1
   coinAccumulated: number
 }
 
-export interface PastureDropping {
+export interface ArenaDropping {
   id: string
   x: number
-  animalId: string
+  unitId: string
 }
 
-export interface PastureCoin {
+export interface ArenaCoin {
   id: string
   x: number
   amount: number
-  animalId: string
+  unitId: string
 }
 
 export interface Profile {
@@ -49,19 +49,19 @@ export interface ApplicationLog {
 }
 
 export interface EconomyState {
-  zen: number
-  totalZenEarned: number
+  points: number
+  totalPointsEarned: number
 }
 
-export interface GuestState {
+export interface UnitState {
   active: number
-  happiestGuestMood: number
+  happiestMood: number
 }
 
 export interface ProgressionState {
   level: number
   totalApplications: number
-  unlockedBathTier: number
+  unlockedUpgradeTier: number
 }
 
 export interface EngagementState {
@@ -73,16 +73,16 @@ export interface EngagementState {
 }
 
 export interface UpgradeState {
-  bathLevel: number
-  bathUpgradeCost: number
+  upgradeLevel: number
+  upgradeCost: number
 }
 
-export interface PastureState {
-  animals: PastureAnimal[]
-  droppings: PastureDropping[]
-  coins: PastureCoin[]
-  unlockedCritters: CritterType[]
-  pastureLevel: number
+export interface ArenaState {
+  units: ArenaUnit[]
+  droppings: ArenaDropping[]
+  coins: ArenaCoin[]
+  unlockedTypes: UnitType[]
+  arenaLevel: number
 }
 
 export interface TelemetryEvent {
@@ -96,10 +96,10 @@ export interface SaveStateV1 {
   profile: Profile
   applications: ApplicationLog[]
   economy: EconomyState
-  guests: GuestState
+  units: UnitState
   progression: ProgressionState
   engagement: EngagementState
   upgrades: UpgradeState
-  pasture?: PastureState
+  arena?: ArenaState
   telemetryQueue: TelemetryEvent[]
 }

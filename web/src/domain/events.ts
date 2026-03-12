@@ -10,14 +10,14 @@ export type DomainEvent =
   | {
       type: 'reward_granted'
       payload: {
-        zenAwarded: number
-        guestDelta: number
+        pointsAwarded: number
+        unitDelta: number
       }
     }
   | {
       type: 'upgrade_purchased'
       payload: {
-        upgrade: 'bath'
+        upgrade: 'facility'
         newLevel: number
       }
     }
@@ -42,9 +42,9 @@ export function toTelemetryEvent(
         name: event.type,
         timestamp: new Date().toISOString(),
         payload: {
-          zenAwarded: event.payload.zenAwarded,
-          guestDelta: event.payload.guestDelta,
-          zenBalance: state.economy.zen,
+          pointsAwarded: event.payload.pointsAwarded,
+          unitDelta: event.payload.unitDelta,
+          pointsBalance: state.economy.points,
         },
       }
     case 'upgrade_purchased':
@@ -54,7 +54,7 @@ export function toTelemetryEvent(
         payload: {
           upgrade: event.payload.upgrade,
           newLevel: event.payload.newLevel,
-          zenBalance: state.economy.zen,
+          pointsBalance: state.economy.points,
         },
       }
   }

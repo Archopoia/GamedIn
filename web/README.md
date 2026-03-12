@@ -3,7 +3,7 @@
 Web-first MVP implementing the GamedIn kickoff plan:
 
 - React + Vite + TypeScript app shell
-- Phaser simulation panel for cozy onsen feedback
+- Phaser simulation panel for gamification feedback
 - Chrome extension for full automation—detects LinkedIn Easy Apply success, zero manual input
 - Reward engine with streaks, daily caps, and upgrades
 - Deterministic local persistence with versioned save model

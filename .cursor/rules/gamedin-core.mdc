@@ -8,7 +8,7 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 
 ## Product Intent
 
-- GamedIn is a cozy, rewarding layer on top of real job-application effort.
+- GamedIn is a rewarding layer on top of real job-application effort.
 - **Minimize player effort:** Hook to LinkedIn (and other platforms) application activity; extension/bookmarklet for zero or one-click capture is the target.
 - Prioritize habit-building loops, immediate feedback, and low-friction UX.
 - Optimize for fast iteration with AI while preserving long-term maintainability.
@@ -34,9 +34,14 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 - Shared contracts belong in centralized type files.
 - Do not use `@ts-ignore` or `@ts-expect-error` without a short justification comment.
 
-## Migration and Naming Discipline
+## No Legacy or Migration Code
 
-- Do full migrations: remove deprecated aliases and compatibility shims in the same change.
+- **Never add migration layers, compatibility shims, or backward-compatibility logic.** Update everything in one change; old formats are invalid and yield fresh state.
+- No migrate files, no "if old format then convert" branches, no fallbacks for deprecated keys.
+- When changing schemas or naming: update all consumers, storage, and types in the same change. Invalid persisted data loads as initial state.
+
+## Naming Discipline
+
 - Keep one canonical term per concept across code, UI, events, and docs.
 - If renaming, update all touched references immediately to prevent dual terminology.
 

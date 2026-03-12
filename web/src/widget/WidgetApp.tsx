@@ -1,6 +1,6 @@
 /**
  * GamedIn embedded widget - full experience on job pages.
- * Stats bar, pasture, Profile, Shop, Stats - all accessible.
+ * Stats bar, simulation panel, Profile, Shop, Stats - all accessible.
  */
 
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
@@ -8,11 +8,13 @@ import type { FormEvent } from 'react'
 import { applicationInputSchema, profileSchema } from '../domain/validation'
 import {
   applyLoggedCommand,
-  purchaseBathUpgrade,
+  createInitialState,
+  purchaseUpgrade,
   setDailyRewardCap,
   upsertProfile,
 } from '../state/gameState'
-import { Pasture } from '../game/Pasture'
+import { Arena } from '../game/Arena'
+import { generateTestApplication, generateTestApplications } from '../dev/fixtures'
 import { loadState, saveState } from './storage'
 import type { SaveStateV1 } from '../domain/types'
 import './WidgetApp.css'
@@ -21,7 +23,9 @@ const PENDING_LOGS_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
 const POLL_MS = 1500
 
-type TabId = 'profile' | 'shop' | 'stats'
+type TabId = 'profile' | 'shop' | 'stats' | 'dev'
+
+const isWidgetDevMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('dev') === '1'
 
 interface ActivityEvent {
   event: string
@@ -181,14 +185,70 @@ export function WidgetApp() {
 
   const handleUpgradePurchase = () => {
     if (!state) return
-    const res = purchaseBathUpgrade(state)
+    const res = purchaseUpgrade(state)
     if (!res.event) {
-      setMessage('Not enough Zen.')
+      setMessage('Not enough points.')
       return
     }
     setState(res.state)
-    setMessage(`Bath upgraded to level ${res.state.upgrades.bathLevel}.`)
+    setMessage(`Upgrade level ${res.state.upgrades.upgradeLevel}.`)
     setTimeout(() => setMessage(null), 2000)
+  }
+
+  const handleDevQuickApply = () => {
+    if (!state) return
+    const input = generateTestApplication()
+    const res = applyLoggedCommand(state, input)
+    setState(res.state)
+    setMessage(`Dev: Added 1 test application (${input.title} @ ${input.company})`)
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  const handleDevBulkApply = (count: number) => {
+    if (!state) return
+    const inputs = generateTestApplications(count)
+    let next = state
+    for (const input of inputs) {
+      const res = applyLoggedCommand(next, input)
+      next = res.state
+    }
+    setState(next)
+    setMessage(`Dev: Added ${count} test applications`)
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  const handleDevSeedRich = () => {
+    if (!state) return
+    const inputs = generateTestApplications(15)
+    let next = state
+    for (const input of inputs) {
+      const res = applyLoggedCommand(next, input)
+      next = res.state
+    }
+    next = {
+      ...next,
+      economy: { points: 500, totalPointsEarned: 500 },
+      units: { active: 12, happiestMood: 85 },
+      upgrades: { upgradeLevel: 3, upgradeCost: 200 },
+      engagement: {
+        ...next.engagement,
+        streakDays: 7,
+        appliesToday: 5,
+        dailyRewardCap: 10,
+      },
+    }
+    setState(next)
+    persist(next)
+    setMessage('Dev: Seeded rich state')
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  const handleDevReset = () => {
+    const fresh = createInitialState()
+    setState(fresh)
+    persist(fresh)
+    setMessage('Dev: Reset to initial state')
+    setTimeout(() => setMessage(null), 3000)
   }
 
   if (!state) {
@@ -235,14 +295,20 @@ export function WidgetApp() {
           {activeTab === 'shop' && (
             <div className="gamedin-widget-form gamedin-widget-form-inline">
               <h3>Shop</h3>
-              <p>Bath Lv{state.upgrades.bathLevel} · Next: {state.upgrades.bathUpgradeCost} Zen</p>
+              <p>Upgrade Lv{state.upgrades.upgradeLevel} · Next: {state.upgrades.upgradeCost} pts</p>
               <button type="button" onClick={handleUpgradePurchase}>Buy upgrade</button>
             </div>
           )}
           {activeTab === 'stats' && (
             <div className="gamedin-widget-form gamedin-widget-form-inline">
               <h3>Stats</h3>
-              <p className="gamedin-widget-stat-line">Apps: {state.applications.length} · S:{counts.search} L:{counts.job_list} C:{counts.job_clicked} V:{counts.job_viewed}</p>
+              <p className="gamedin-widget-stat-line">Apps: {state.applications.length}</p>
+              <div className="gamedin-widget-activity-counts">
+                <span title="Search queries">Searches: {counts.search}</span>
+                <span title="Job list views">Job lists: {counts.job_list}</span>
+                <span title="Job cards clicked">Jobs clicked: {counts.job_clicked}</span>
+                <span title="Job detail views">Jobs viewed: {counts.job_viewed}</span>
+              </div>
               {state.applications.length > 0 && (
                 <ul className="gamedin-widget-feed gamedin-widget-feed-compact">
                   {[...state.applications].reverse().slice(0, 4).map((app) => (
@@ -267,21 +333,34 @@ export function WidgetApp() {
               <button type="button" onClick={fetchActivity} className="gamedin-widget-btn-sm">Refresh</button>
             </div>
           )}
+          {activeTab === 'dev' && isWidgetDevMode && (
+            <div className="gamedin-widget-form gamedin-widget-form-inline">
+              <h3>Dev Mode</h3>
+              <p className="gamedin-widget-muted">Test features without real applications</p>
+              <div className="gamedin-widget-form-row gamedin-widget-dev-actions">
+                <button type="button" onClick={handleDevQuickApply}>Quick apply (1)</button>
+                <button type="button" onClick={() => handleDevBulkApply(5)}>Bulk apply (5)</button>
+                <button type="button" onClick={() => handleDevBulkApply(10)}>Bulk apply (10)</button>
+                <button type="button" onClick={handleDevSeedRich}>Seed rich state</button>
+                <button type="button" onClick={handleDevReset} className="gamedin-widget-dev-reset">Reset state</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <div className="gamedin-widget-bar">
         <div className="gamedin-widget-stats">
           <span className="gamedin-widget-brand">GamedIn</span>
-          <span title="Zen">Zen {state.economy.zen}</span>
+          <span title="Points">Pts {state.economy.points}</span>
           <span title="Streak">Streak {state.engagement.streakDays}d</span>
           <span title="Level">Lv {state.progression.level}</span>
-          <span title="Guests">Guests {state.guests.active}</span>
+          <span title="Units">Units {state.units.active}</span>
           <span title="Today">
             {state.engagement.appliesToday}/{state.profile.dailyApplyGoal}
           </span>
         </div>
         <div className="gamedin-widget-tabs">
-          {(['profile', 'shop', 'stats'] as const).map((tab) => (
+          {(['profile', 'shop', 'stats', ...(isWidgetDevMode ? ['dev'] : [])] as TabId[]).map((tab) => (
             <button
               key={tab}
               type="button"
@@ -301,8 +380,8 @@ export function WidgetApp() {
         {message && <span className="gamedin-widget-message">{message}</span>}
       </div>
       </div>
-      <div className="gamedin-widget-pasture-wrap">
-        <Pasture
+      <div className="gamedin-widget-arena-wrap">
+        <Arena
           state={state}
           setState={setState as React.Dispatch<React.SetStateAction<SaveStateV1>>}
           setMessage={setMessage}

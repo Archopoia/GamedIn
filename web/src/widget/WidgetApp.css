@@ -32,6 +32,7 @@
   min-height: 180px;
   background: linear-gradient(to top, #1a2e24, #0d1f18);
   border-top: 2px solid #2d5a27;
+  pointer-events: auto;
 }
 
 .gamedin-widget-bar {
@@ -177,12 +178,39 @@
   margin-bottom: 4px !important;
 }
 
+.gamedin-widget-activity-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #cfffe3;
+}
+
+.gamedin-widget-activity-counts span {
+  white-space: nowrap;
+}
+
 .gamedin-widget-feed-compact {
   max-height: none;
 }
 
 .gamedin-widget-btn-sm {
   margin-top: 4px;
+}
+
+.gamedin-widget-dev-actions {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.gamedin-widget-dev-actions button {
+  margin: 0;
+}
+
+.gamedin-widget-dev-reset {
+  color: #e8a8a8;
+  border-color: #5a2727;
 }
 
 .gamedin-widget-feed {
@@ -215,7 +243,7 @@
   margin: 0;
 }
 
-.gamedin-widget-pasture-wrap {
+.gamedin-widget-arena-wrap {
   position: relative;
   flex: 1;
   min-height: 140px;
@@ -223,17 +251,17 @@
   overflow: hidden;
 }
 
-.gamedin-widget-pasture-wrap .pasture-overlay {
+.gamedin-widget-arena-wrap .arena-overlay {
   width: 100%;
   height: 140px;
 }
 
-.gamedin-widget-pasture-wrap .pasture-canvas {
+.gamedin-widget-arena-wrap .arena-canvas {
   width: 100% !important;
   height: 140px !important;
 }
 
-.gamedin-widget-pasture-wrap .pasture-hint {
+.gamedin-widget-arena-wrap .arena-hint {
   position: absolute;
   bottom: 4px;
   left: 50%;
@@ -243,18 +271,18 @@
   pointer-events: none;
 }
 
-/* Pasture canvas (Phaser) */
-.pasture-overlay {
+/* Arena canvas (Phaser) */
+.arena-overlay {
   width: 100%;
   height: 140px;
   position: relative;
 }
 
-.pasture-canvas {
+.arena-canvas {
   width: 100%;
   height: 140px;
 }
 
-.pasture-canvas canvas {
+.arena-canvas canvas {
   display: block;
 }
