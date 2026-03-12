@@ -99,7 +99,7 @@ function syncStageFromState(
         enemy.y,
         width,
         horizonY,
-        centerY + 18,
+        centerY,
       )
       const reveal = clamp01((projected.depth - 0.04) / 0.25)
       const hitAgeMs =
@@ -109,12 +109,25 @@ function syncStageFromState(
         0.1 +
         ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
       const enemySize = 4 + projected.depth * 16
+      const desiredContactDist = 20 + enemySize * 0.5 - 1
+      let renderX = projected.x
+      let renderY = projected.y
+      const worldAngle = Math.atan2(enemy.y - WORLD_PET_Y, enemy.x - LOGICAL_WIDTH / 2)
+      if (enemy.lockedOnPet) {
+        const contactRx = desiredContactDist
+        const contactRy = desiredContactDist * 0.82
+        renderX = centerX + Math.cos(worldAngle) * contactRx
+        renderY = centerY + Math.sin(worldAngle) * contactRy
+      }
       return {
         enemyId: enemy.id,
         worldY: enemy.y,
         isBehindPet: enemy.y < WORLD_PET_Y,
         lockedOnPet: enemy.lockedOnPet ?? false,
+        worldAngle,
         projected,
+        renderX,
+        renderY,
         reveal,
         hitFlash,
         pulse,
@@ -123,12 +136,12 @@ function syncStageFromState(
     })
 
   const drawEnemy = (enemy: (typeof renderEnemies)[number]): void => {
-    const { projected, reveal, hitFlash, pulse, enemySize } = enemy
+    const { reveal, hitFlash, pulse, enemySize } = enemy
     const enemyAura = new Graphics()
     enemyAura.circle(0, 0, enemySize * 0.9)
     enemyAura.fill({ color: COLORS_HEX.enemyCore, alpha: pulse * reveal })
-    enemyAura.x = projected.x
-    enemyAura.y = projected.y
+    enemyAura.x = enemy.renderX
+    enemyAura.y = enemy.renderY
     app.stage.addChild(enemyAura)
 
     const enemyGfx = new Graphics()
@@ -138,8 +151,8 @@ function syncStageFromState(
     enemyGfx.fill(COLORS_HEX.enemyCore)
     enemyGfx.stroke({ width: 1, color: COLORS_HEX.danger, alpha: reveal })
     enemyGfx.alpha = reveal
-    enemyGfx.x = projected.x - enemySize / 2
-    enemyGfx.y = projected.y - enemySize / 2
+    enemyGfx.x = enemy.renderX - enemySize / 2
+    enemyGfx.y = enemy.renderY - enemySize / 2
     app.stage.addChild(enemyGfx)
 
     if (hitFlash > 0) {
@@ -150,29 +163,29 @@ function syncStageFromState(
         color: COLORS_HEX.textBright,
         alpha: hitFlash * reveal,
       })
-      hitRing.x = projected.x
-      hitRing.y = projected.y
+      hitRing.x = enemy.renderX
+      hitRing.y = enemy.renderY
       app.stage.addChild(hitRing)
     }
   }
 
   // Draw enemies behind pet first to preserve depth.
   for (const enemy of renderEnemies) {
-    if (enemy.lockedOnPet && Math.abs(enemy.projected.y - centerY) < 18) {
+    if (enemy.lockedOnPet && Math.abs(enemy.renderY - centerY) < 18) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H8',location:'Arena.tsx:locked-layer-snapshot',message:'Locked enemy render layer decision',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,side:enemy.worldY >= WORLD_PET_Y ? 'front' : 'back',projectedY:enemy.projected.y,centerY,drawLayer:enemy.projected.y <= centerY + 2 ? 'behind' : 'front',depth:enemy.projected.depth},timestamp:Date.now()})}).catch(()=>{})
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H8',location:'Arena.tsx:locked-layer-snapshot',message:'Locked enemy render layer decision',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,side:enemy.worldY >= WORLD_PET_Y ? 'front' : 'back',projectedY:enemy.projected.y,renderY:enemy.renderY,centerY,drawLayer:enemy.renderY <= centerY + 2 ? 'behind' : 'front',depth:enemy.projected.depth},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H13',location:'Arena.tsx:locked-projected-spread',message:'Locked enemy projected spread sample',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,projectedY:enemy.projected.y,centerY,depth:enemy.projected.depth,isBehindPet:enemy.isBehindPet},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
     }
     if (
-      enemy.projected.y <= centerY + 2 &&
+      enemy.renderY <= centerY + 2 &&
       enemy.projected.depth > 0.92 &&
       enemy.reveal > 0.8
     ) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H6',location:'Arena.tsx:depth-order-contradiction',message:'Deep enemy rendered behind pet',data:{projectedY:enemy.projected.y,centerY,depth:enemy.projected.depth,reveal:enemy.reveal},timestamp:Date.now()})}).catch(()=>{})
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H6',location:'Arena.tsx:depth-order-contradiction',message:'Deep enemy rendered behind pet',data:{projectedY:enemy.projected.y,renderY:enemy.renderY,centerY,depth:enemy.projected.depth,reveal:enemy.reveal},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
     }
     if (enemy.isBehindPet) drawEnemy(enemy)
@@ -213,6 +226,26 @@ function syncStageFromState(
   for (const enemy of renderEnemies) {
     if (!enemy.isBehindPet) drawEnemy(enemy)
   }
+  const lockedVisual = renderEnemies.filter((enemy) => enemy.lockedOnPet)
+  if (lockedVisual.length > 0) {
+    const visualGaps = lockedVisual.map((enemy) => {
+      const screenDist = Math.hypot(enemy.renderX - centerX, enemy.renderY - centerY)
+      return screenDist - (20 + enemy.enemySize * 0.5)
+    })
+    const avgVisualGap =
+      visualGaps.reduce((sum, gap) => sum + gap, 0) / visualGaps.length
+    const minVisualGap = Math.min(...visualGaps)
+    const maxVisualGap = Math.max(...visualGaps)
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H20',location:'Arena.tsx:locked-visual-gap-summary',message:'Locked enemy visual gap summary',data:{lockedCount:lockedVisual.length,avgVisualGap,minVisualGap,maxVisualGap,petRadius:20,visualClamp:'enabled'},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+    const avgAbsWorldAngleSin =
+      lockedVisual.reduce((sum, enemy) => sum + Math.abs(Math.sin(enemy.worldAngle)), 0) /
+      lockedVisual.length
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H23',location:'Arena.tsx:locked-angle-spread',message:'Locked world-angle spread sample',data:{lockedCount:lockedVisual.length,avgAbsWorldAngleSin},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+  }
 
   // Projectiles with trails.
   for (const proj of (state.arena.projectiles ?? []).slice(-15)) {
@@ -221,7 +254,7 @@ function syncStageFromState(
       proj.y,
       width,
       horizonY,
-      centerY + 18,
+      centerY,
     )
     const projectileSize = 3 + projected.depth * 4
 

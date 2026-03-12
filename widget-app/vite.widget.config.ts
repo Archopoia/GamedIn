@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
-const WIDGET_VERSION = '2'
+const WIDGET_VERSION = '3'
 
 export default defineConfig({
   plugins: [
