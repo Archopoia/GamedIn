@@ -397,3 +397,40 @@ button:hover {
   color: #7a9a8a;
   margin: 0;
 }
+
+/* Page Data panel */
+.page-data-hint {
+  font-size: 0.75rem;
+  color: #7a9a8a;
+  margin: 0 0 0.5rem;
+}
+
+.page-data-panel .stats-refresh {
+  margin-bottom: 0.75rem;
+}
+
+.page-data-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, auto) 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.page-data-grid dt {
+  color: #7a9a8a;
+  font-weight: 500;
+}
+
+.page-data-grid dd {
+  margin: 0;
+  color: #e8fff2;
+}
+
+.page-data-ids {
+  font-size: 0.75rem;
+  background: #1c382f;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  word-break: break-all;
+}

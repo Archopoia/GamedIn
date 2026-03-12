@@ -6,6 +6,7 @@ import { isDevMode } from './lib/devMode'
 import { toTelemetryEvent } from './domain/events'
 import { applicationInputSchema, profileSchema } from './domain/validation'
 import { Arena } from './game/Arena'
+import { PageDataPanel, type PageState } from './game/PageDataPanel'
 import { StatsPanel } from './game/StatsPanel'
 import { initAnalytics, trackEvent } from './lib/analytics'
 import {
@@ -17,7 +18,7 @@ import {
 } from './state/gameState'
 import { loadState, saveState } from './state/saveSync'
 
-type TabId = 'extension' | 'stats' | 'profile' | 'shop' | 'dev'
+type TabId = 'extension' | 'stats' | 'pagedata' | 'profile' | 'shop' | 'dev'
 
 interface ActivityEvent {
   event: string
@@ -46,6 +47,7 @@ function App() {
   const [message, setMessage] = useState('Welcome to GamedIn.')
   const [capInput, setCapInput] = useState(state.engagement.dailyRewardCap.toString())
   const [activity, setActivity] = useState<ActivityEvent[]>([])
+  const [pageState, setPageState] = useState<PageState | null>(null)
 
   useEffect(() => {
     initAnalytics()
@@ -107,15 +109,16 @@ function App() {
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const ev = e as CustomEvent<{ activity: ActivityEvent[] }>
+      const ev = e as CustomEvent<{ activity: ActivityEvent[]; pageState?: PageState | null }>
       setActivity(ev.detail?.activity || [])
+      setPageState(ev.detail?.pageState ?? null)
     }
     window.addEventListener('gamedin-activity', handler)
     return () => window.removeEventListener('gamedin-activity', handler)
   }, [])
 
   useEffect(() => {
-    if (activeTab === 'stats') fetchActivity()
+    if (activeTab === 'stats' || activeTab === 'pagedata') fetchActivity()
   }, [activeTab])
 
   const todayProgress = useMemo(() => {
@@ -161,6 +164,7 @@ function App() {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'extension', label: 'Extension' },
     { id: 'stats', label: 'Stats' },
+    { id: 'pagedata', label: 'Page Data' },
     { id: 'profile', label: 'Profile' },
     { id: 'shop', label: 'Shop' },
     ...(isDevMode ? [{ id: 'dev' as TabId, label: 'Dev' }] : []),
@@ -228,6 +232,10 @@ function App() {
                 activity={activity}
                 onRefresh={fetchActivity}
               />
+            )}
+
+            {activeTab === 'pagedata' && (
+              <PageDataPanel pageState={pageState} onRefresh={fetchActivity} />
             )}
 
             {activeTab === 'profile' && (

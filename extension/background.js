@@ -7,6 +7,7 @@ const LOG = (...args) => console.log('[GamedIn Background]', ...args)
 
 const STORAGE_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
+const PAGE_STATE_KEY = 'gamedin.pageState'
 const ACTIVITY_MAX = 200
 
 LOG('Background script loaded')
@@ -40,6 +41,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const payload = message.payload || {}
     pushActivity({ type: payload.event, ...payload })
     LOG('GAMEDIN_ACTIVITY', payload.event, payload)
+    return false
+  }
+  if (message.type === 'GAMEDIN_PAGE_STATE') {
+    const payload = message.payload || {}
+    chrome.storage.local.set({ [PAGE_STATE_KEY]: { ...payload, receivedAt: Date.now() } })
     return false
   }
 })

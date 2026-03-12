@@ -9,6 +9,7 @@ const LOG = (...args) => console.log('[GamedIn Game]', ...args)
 
 const STORAGE_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
+const PAGE_STATE_KEY = 'gamedin.pageState'
 const EVENT_NAME = 'gamedin-apply-logged'
 const READY_EVENT = 'gamedin-extension-ready'
 const GET_ACTIVITY_EVENT = 'gamedin-get-activity'
@@ -20,9 +21,10 @@ LOG('Content script loaded', { url: window.location.href })
 function fetchActivity() {
   try {
     if (typeof chrome === 'undefined' || !chrome?.storage?.local) return
-    chrome.storage.local.get(ACTIVITY_KEY, (result) => {
+    chrome.storage.local.get([ACTIVITY_KEY, PAGE_STATE_KEY], (result) => {
       const activity = result?.[ACTIVITY_KEY] || []
-      window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT, { detail: { activity } }))
+      const pageState = result?.[PAGE_STATE_KEY] || null
+      window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT, { detail: { activity, pageState } }))
     })
   } catch (_) {}
 }
