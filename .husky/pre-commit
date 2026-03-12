@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
-cd web || exit 1
+cd widget-app || exit 1
 npx lint-staged

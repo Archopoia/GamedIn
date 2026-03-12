@@ -6,11 +6,11 @@ on:
   pull_request:
 
 jobs:
-  web:
+  widget_app:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: web
+        working-directory: widget-app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: widget-app/package-lock.json
 
       - name: Install
         run: npm ci

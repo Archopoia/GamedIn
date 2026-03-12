@@ -19,14 +19,14 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 2. Prefer end-to-end slices (feature + persistence + basic tests + docs) over partial scaffolding.
 3. Keep prompts/specs explicit and deterministic; avoid ambiguous "magic" behavior.
 4. Before introducing external APIs/libraries, verify current usage/docs with Context7 when available.
-5. **Always rebuild at the end of changes:** Run `npm run build` and `npm run build:widget` in `web/` after edits to extension, web app, or widget so the user sees the latest build.
+5. **Always rebuild at the end of changes:** Run `npm run build` in the widget app workspace (`widget-app/`) after edits to extension/widget code so the extension widget build stays current.
 
 ## Stack (AI Vibecoding Optimized)
 
-- **Keep:** TypeScript (strict), React, Vite, Zod, Vitest, Playwright, raw Canvas. All have strong AI training data.
+- **Keep:** TypeScript (strict), React, Vite, Zod, Vitest, Playwright, PixiJS. All have strong AI training data.
 - **Domain:** Pure TS modules in `domain/` — no React, no side effects. One concept per file.
 - **State:** Command pattern (`applyLoggedCommand`, `confirmSpin`, `selectUpgrade`) — explicit inputs/outputs.
-- **Arena:** Split render vs simulation. `domain/arena-sim.ts` = pure sim (spawn, move, hit detection). `game/Arena.tsx` = RAF loop + draw.
+- **Arena:** Split render vs simulation. `domain/arena-sim.ts` = pure sim (spawn, move, hit detection). `widget/Arena.tsx` = RAF loop + draw.
 - **Avoid:** Redux, Phaser/heavy engines, `any`, `@ts-ignore` without justification. Use Context7 for library docs when adding/changing usage.
 
 ## Architecture and Boundaries
@@ -53,6 +53,8 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 - **Never add migration layers, compatibility shims, or backward-compatibility logic.** Update everything in one change; old formats are invalid and yield fresh state.
 - No migrate files, no "if old format then convert" branches, no fallbacks for deprecated keys.
 - When changing schemas or naming: update all consumers, storage, and types in the same change. Invalid persisted data loads as initial state.
+- **Full purge required:** when renaming/restructuring, remove old folders/files/docs/scripts in the same change. No archived legacy copies, aliases, or duplicate paths.
+- Keep exactly one canonical workspace path and one canonical term per concept; delete superseded references immediately.
 
 ## Naming Discipline
 
@@ -68,7 +70,7 @@ Build fast with AI, but keep the codebase clean, typed, and opportunity-maximizi
 
 ## Platform and Integration
 
-- Web-first implementation; avoid engine pivots unless explicitly approved.
+- Extension widget-first implementation; avoid standalone webgame scope and avoid engine pivots unless explicitly approved.
 - **Opportunity-maximizing:** Align with proven market patterns (Huntr, LinkedIn Job Application Tracker, JobPilot)—extension auto-capture, one-click bookmarklet, passive detection.
 - No automated application submission (we never submit for the user).
 - User-consented integrations; transparent data handling.
