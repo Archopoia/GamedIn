@@ -113,7 +113,7 @@ export function saveState(state: SaveState): Promise<void> {
   return new Promise((resolve) => {
     try {
       chrome.storage.local.set({ [STORAGE_KEY]: JSON.stringify(state) }, () => {
-        chrome?.runtime?.lastError
+        void chrome?.runtime?.lastError // consume to clear; we ignore for save
         resolve()
       })
     } catch {

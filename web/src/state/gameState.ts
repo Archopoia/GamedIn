@@ -243,6 +243,6 @@ export function checkDailyReset(state: SaveState, now = new Date()): SaveState {
   }
 }
 
-export function setDailyRewardCap(state: SaveState, _cap: number): SaveState {
+export function setDailyRewardCap(state: SaveState): SaveState {
   return state
 }

@@ -20,11 +20,7 @@ const HIT_RADIUS = 25
  * Pure arena simulation: spawn enemies, move projectiles, resolve hits, update pet mood.
  * No side effects. Called from Arena.tsx RAF loop.
  */
-export function tickArena(
-  state: SaveState,
-  dtMs: number,
-  _pageState?: { tabVisible?: boolean } | null,
-): SaveState {
+export function tickArena(state: SaveState, dtMs: number): SaveState {
   const arena = state.arena
   const now = Date.now()
 

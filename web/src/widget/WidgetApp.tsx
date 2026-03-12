@@ -24,7 +24,6 @@ import { PageDataPanel, type PageState } from '../game/PageDataPanel'
 import { generateTestApplication, generateTestApplications } from '../dev/fixtures'
 import { loadState, saveState } from './storage'
 import type { SaveState } from '../domain/types'
-import './WidgetApp.css'
 
 const PENDING_LOGS_KEY = 'gamedin.pendingLogs'
 const ACTIVITY_KEY = 'gamedin.activity'
@@ -176,6 +175,7 @@ export function WidgetApp() {
     processPending()
     const id = setInterval(processPending, POLL_MS)
     return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gate on state loaded, not on every state change
   }, [state !== null])
 
   const fetchActivity = useCallback(() => {
@@ -250,6 +250,7 @@ export function WidgetApp() {
       })
     }, DECAY_INTERVAL_MS)
     return () => clearInterval(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gate on state loaded, not on every state change
   }, [state !== null])
 
   const sendResize = useCallback((h: number) => {
@@ -268,7 +269,6 @@ export function WidgetApp() {
 
   useLayoutEffect(() => {
     if (!activeTab) {
-      setPopupHeight(0)
       sendResize(180)
       return
     }
@@ -382,7 +382,7 @@ export function WidgetApp() {
 
   if (!state) {
     return (
-      <div className="gamedin-widget gamedin-widget-loading">
+      <div className="flex flex-col w-full h-full min-h-[180px] items-center justify-center text-gamedin-muted bg-gradient-to-t from-gamedin-bg-gradient to-gamedin-bg border-t-2 border-gamedin-success">
         <span>Loading your despair…</span>
       </div>
     )
@@ -406,34 +406,34 @@ export function WidgetApp() {
 
   return (
     <div
-      className={`gamedin-widget gamedin-widget-embedded ${activeTab ? 'gamedin-widget-popup-open' : ''}`}
+      className="flex flex-col w-full h-full min-h-[180px] text-[13px] font-sans p-0"
       style={activeTab && popupHeight > 0 ? { paddingTop: popupHeight } : undefined}
     >
-      <div className="gamedin-widget-inner">
-        <div className="gamedin-widget-bar-wrap">
+      <div className="flex-1 flex flex-col min-h-[180px] bg-gradient-to-t from-gamedin-bg-gradient to-gamedin-bg border-t-2 border-gamedin-success pointer-events-auto">
+        <div className="relative shrink-0">
           {activeTab && (
-            <div ref={popupRef} className="gamedin-widget-popup">
+            <div
+              ref={popupRef}
+              className="absolute bottom-full left-0 w-[280px] max-w-[280px] max-h-[520px] overflow-y-auto p-3 px-4 bg-gamedin-bg border border-b-0 border-gamedin-border rounded-t-lg shadow-[0_-4px_12px_rgba(0,0,0,0.3)] z-[1000]"
+            >
               {activeTab === 'profile' && (
-                <form
-                  onSubmit={handleProfileSave}
-                  className="gamedin-widget-form gamedin-widget-form-inline"
-                >
+                <form onSubmit={handleProfileSave} className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_label]:m-0 [&_label]:mb-1 [&_label]:text-xs [&_label]:text-gamedin-text [&_input]:ml-1 [&_input]:py-0.5 [&_input]:px-1.5 [&_input]:text-[11px] [&_input]:bg-gamedin-panel [&_input]:border [&_input]:border-gamedin-border [&_input]:rounded [&_input]:text-gamedin-text-bright [&_button]:m-1 [&_button]:mr-1 [&_button]:mt-1 [&_button]:mb-1 [&_button]:py-1 [&_button]:px-2 [&_button]:text-[11px] [&_button]:bg-gamedin-success [&_button]:border [&_button]:border-gamedin-border [&_button]:rounded [&_button]:text-gamedin-text-bright [&_button]:cursor-pointer">
                   <h3>Hopium Config</h3>
                   {!onboardingSeen && (
-                    <div className="gamedin-widget-onboarding">
-                      <p className="gamedin-widget-onboarding-title">How it works</p>
-                      <ul className="gamedin-widget-onboarding-list">
+                    <div className="mb-3 p-2.5 px-3 bg-gamedin-panel border border-gamedin-border rounded">
+                      <p className="m-0 mb-1.5 text-xs font-bold text-gamedin-accent">How it works</p>
+                      <ul className="m-0 mb-2 pl-[18px] text-[11px] text-gamedin-text leading-relaxed [&_li]:mb-1">
                         <li><strong>Hopium</strong> — Currency earned when you apply. Decays when idle.</li>
                         <li><strong>Run</strong> — Daily goal (X/Y). Hit it to complete your run.</li>
                         <li><strong>Cope Pet</strong> — Mood reflects apply activity. Apply to feed it.</li>
                         <li><strong>Apply</strong> on LinkedIn, Indeed, Glassdoor — extension detects it and grants rewards.</li>
                       </ul>
-                      <button type="button" className="gamedin-widget-onboarding-dismiss" onClick={dismissOnboarding}>
+                      <button type="button" className="py-1 px-2.5 text-[11px] bg-gamedin-border border border-gamedin-accent rounded text-gamedin-accent cursor-pointer hover:bg-gamedin-hover" onClick={dismissOnboarding}>
                         Got it
                       </button>
                     </div>
                   )}
-                  <div className="gamedin-widget-form-row">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <label>
                       Name{' '}
                       <input
@@ -479,35 +479,35 @@ export function WidgetApp() {
                 </form>
               )}
               {activeTab === 'pagedata' && (
-                <div className="gamedin-widget-form gamedin-widget-form-inline">
+                <div className="[&_h2]:m-0 [&_h2]:mb-1.5 [&_h3]:m-0 [&_h3]:mb-1.5 [&_h2]:text-[13px] [&_h3]:text-[13px] [&_h2]:text-gamedin-accent [&_h3]:text-gamedin-accent">
                   <PageDataPanel pageState={pageState} onRefresh={fetchActivity} />
                 </div>
               )}
               {activeTab === 'stats' && (
-                <div className="gamedin-widget-form gamedin-widget-form-inline">
+                <div className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_p]:text-xs [&_p]:text-gamedin-text">
                   <h3>Rejection Ledger</h3>
-                  <p className="gamedin-widget-stat-line">
+                  <p className="mb-1">
                     Apps: {state.applications.length}
                   </p>
-                  <p className="gamedin-widget-stat-line">
+                  <p className="mb-1">
                     Achievements: {state.meta.achievements.length}
                   </p>
                   {state.applications.length === 0 && (
-                    <p className="gamedin-widget-empty-state">
+                    <p className="text-gamedin-muted text-xs my-2 py-2 border-t border-gamedin-border">
                       Apply to jobs on LinkedIn, Indeed, or Glassdoor to see your first entry. The extension detects applies automatically.
                     </p>
                   )}
                   {state.meta.collectibles.length > 0 && (
-                    <div className="gamedin-widget-collectibles">
-                      <span className="gamedin-widget-collectibles-label">Unlocked:</span>
+                    <div className="flex flex-wrap items-center gap-1.5 gap-x-2.5 mt-2">
+                      <span className="text-gamedin-muted text-xs">Unlocked:</span>
                       {state.meta.collectibles.map((id) => (
-                        <span key={id} className="gamedin-widget-collectible" title={id}>
+                        <span key={id} className="py-0.5 px-2 bg-gamedin-border rounded text-xs text-gamedin-accent" title={id}>
                           {ACHIEVEMENT_LABELS[id] ?? id}
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="gamedin-widget-activity-counts">
+                  <div className="flex flex-wrap gap-x-3 gap-y-2 mb-1.5 text-xs text-gamedin-text [&_span]:whitespace-nowrap">
                     <span title="Search queries">Searches: {counts.search}</span>
                     <span title="Job list views">Job lists: {counts.job_list}</span>
                     <span title="Job cards clicked">
@@ -518,15 +518,15 @@ export function WidgetApp() {
                     </span>
                   </div>
                   {state.applications.length > 0 && (
-                    <ul className="gamedin-widget-feed gamedin-widget-feed-compact">
+                    <ul className="list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-0.5 [&_li]:border-b [&_li]:border-gamedin-border">
                       {[...state.applications]
                         .reverse()
                         .slice(0, 4)
                         .map((app) => (
                           <li key={app.id}>
-                            <span className="src">{app.source}</span> {app.title}{' '}
+                            <span className="text-gamedin-accent mr-1">{app.source}</span> {app.title}{' '}
                             @ {app.company}
-                            <span className="time">
+                            <span className="float-right text-gamedin-muted text-[11px]">
                               {formatTime(new Date(app.createdAt).getTime())}
                             </span>
                           </li>
@@ -534,14 +534,14 @@ export function WidgetApp() {
                     </ul>
                   )}
                   {recent.length > 0 && (
-                    <ul className="gamedin-widget-feed gamedin-widget-feed-compact">
+                    <ul className="list-none p-0 my-1 text-xs text-gamedin-text [&_li]:py-0.5 [&_li]:border-b [&_li]:border-gamedin-border">
                       {recent.map((ev, i) => (
                         <li key={i}>
-                          <span className="src">{ev.event}</span>
+                          <span className="text-gamedin-accent mr-1">{ev.event}</span>
                           {ev.keywords && ` "${ev.keywords}"`}
                           {ev.title &&
                             ` ${ev.title}${ev.company ? ` @ ${ev.company}` : ''}`}
-                          <span className="time">
+                          <span className="float-right text-gamedin-muted text-[11px]">
                             {formatTime(ev.timestamp)}
                           </span>
                         </li>
@@ -551,32 +551,26 @@ export function WidgetApp() {
                   <button
                     type="button"
                     onClick={fetchActivity}
-                    className="gamedin-widget-btn-sm"
+                    className="mt-1 py-1 px-2 text-[11px] bg-gamedin-success border border-gamedin-border rounded text-gamedin-text-bright cursor-pointer"
                   >
                     Refresh the Pain
                   </button>
                 </div>
               )}
               {activeTab === 'dev' && isWidgetDevMode && (
-                <div className="gamedin-widget-form gamedin-widget-form-inline">
+                <div className="[&_h3]:m-0 [&_h3]:mb-1.5 [&_h3]:text-[13px] [&_h3]:text-gamedin-accent [&_p]:m-0 [&_p]:mb-1 [&_p]:text-xs [&_p]:text-gamedin-muted [&_button]:m-0 [&_button]:py-1 [&_button]:px-2 [&_button]:text-[11px] [&_button]:bg-gamedin-success [&_button]:border [&_button]:border-gamedin-border [&_button]:rounded [&_button]:text-gamedin-text-bright [&_button]:cursor-pointer">
                   <h3>Dev Mode</h3>
-                  <p className="gamedin-widget-muted">
+                  <p className="text-gamedin-muted text-xs m-0">
                     Test features without real applications
                   </p>
-                  <div className="gamedin-widget-form-row gamedin-widget-dev-actions">
+                  <div className="flex flex-wrap gap-1.5">
                     <button type="button" onClick={handleDevQuickApply}>
                       Quick apply (1)
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDevBulkApply(5)}
-                    >
+                    <button type="button" onClick={() => handleDevBulkApply(5)}>
                       Bulk apply (5)
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDevBulkApply(10)}
-                    >
+                    <button type="button" onClick={() => handleDevBulkApply(10)}>
                       Bulk apply (10)
                     </button>
                     <button type="button" onClick={handleDevSeedRich}>
@@ -585,7 +579,7 @@ export function WidgetApp() {
                     <button
                       type="button"
                       onClick={handleDevReset}
-                      className="gamedin-widget-dev-reset"
+                      className="text-gamedin-danger border-gamedin-danger-border"
                     >
                       Reset state
                     </button>
@@ -594,16 +588,16 @@ export function WidgetApp() {
               )}
             </div>
           )}
-          <div className="gamedin-widget-bar">
-            <div className="gamedin-widget-stats">
-              <span className="gamedin-widget-brand">GamedIn</span>
+          <div className="shrink-0 flex items-center gap-3 py-1.5 px-3 bg-gamedin-bg border-b border-gamedin-border">
+            <div className="flex flex-wrap items-center gap-2.5 text-gamedin-text">
+              <span className="font-bold text-gamedin-accent mr-1">GamedIn</span>
               <span title="Currency earned by applying">Hopium: {state.economy.hopium}</span>
               <span title="Consecutive days hitting daily goal">Streak: {state.engagement.streakDays}d</span>
               <span title="Daily apply goal (X/Y)">
                 Run: {state.run.appliesToday}/{state.profile.dailyApplyGoal}
               </span>
             </div>
-            <div className="gamedin-widget-tabs">
+            <div className="flex gap-1">
               {(
                 [
                   'profile',
@@ -615,7 +609,7 @@ export function WidgetApp() {
                 <button
                   key={tab}
                   type="button"
-                  className={`gamedin-widget-tab ${activeTab === tab ? 'active' : ''}`}
+                  className={`py-1 px-2 text-[11px] bg-transparent border border-gamedin-border rounded text-gamedin-muted cursor-pointer hover:bg-gamedin-panel hover:text-gamedin-accent ${activeTab === tab ? 'bg-gamedin-panel text-gamedin-accent' : ''}`}
                   onMouseDown={onTabMouseDown}
                   onClick={() =>
                     setActiveTab(activeTab === tab ? null : tab)
@@ -625,24 +619,24 @@ export function WidgetApp() {
                 </button>
               ))}
             </div>
-            <div className="gamedin-widget-progress-wrap">
+            <div className="flex-1 min-w-[80px] max-w-[120px]">
               <div
-                className="gamedin-widget-progress"
+                className="h-1 bg-gamedin-panel rounded-full overflow-hidden"
                 role="progressbar"
                 aria-valuenow={todayProgress}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={`Daily run progress: ${todayProgress}%`}
               >
-                <span style={{ width: `${todayProgress}%` }} />
+                <span className="block h-full bg-gamedin-accent transition-[width] duration-200" style={{ width: `${todayProgress}%` }} />
               </div>
             </div>
             {message && (
-              <span className="gamedin-widget-message">{message}</span>
+              <span className="text-[11px] text-gamedin-text">{message}</span>
             )}
           </div>
         </div>
-        <div className="gamedin-widget-arena-wrap">
+        <div className="relative flex-1 min-h-[140px] w-full overflow-hidden">
           <Arena
             state={state}
             setState={setState as React.Dispatch<React.SetStateAction<SaveState>>}
