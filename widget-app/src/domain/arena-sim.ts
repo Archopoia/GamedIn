@@ -22,8 +22,12 @@ const PET_CENTER = 400
 const BASE_HIT_RADIUS = 7
 const HIT_RADIUS_BY_DEPTH = 6
 const PROJECTILE_COLLIDER_RADIUS = 3
-const MAX_ENEMY_SPREAD_X = 140
-const MAX_ENEMY_SPREAD_Y = 70
+const TARGET_RING_MIN_RADIUS = 14
+const TARGET_RING_MAX_RADIUS = 30
+const TARGET_RING_Y_SQUASH = 0.7
+const FRONT_BLOCK_HALF_ANGLE = 0.08
+const FRONT_BLOCK_HALF_WIDTH = 18
+const FRONT_BLOCK_Y_MIN = PET_WORLD_Y + 2
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
@@ -45,6 +49,34 @@ function pointToSegmentDistance(
   const closestX = x1 + dx * clampedT
   const closestY = y1 + dy * clampedT
   return Math.hypot(px - closestX, py - closestY)
+}
+
+function pickEnemyTargetAroundPet(): { targetX: number; targetY: number } {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const angle = Math.random() * Math.PI * 2
+    const radius =
+      TARGET_RING_MIN_RADIUS +
+      Math.random() * (TARGET_RING_MAX_RADIUS - TARGET_RING_MIN_RADIUS)
+    const targetX = PET_CENTER + Math.cos(angle) * radius
+    const targetY = PET_WORLD_Y + Math.sin(angle) * radius * TARGET_RING_Y_SQUASH
+
+    const inBlockedFrontCone =
+      Math.abs(angle - Math.PI / 2) < FRONT_BLOCK_HALF_ANGLE ||
+      Math.abs(angle - (Math.PI / 2 + Math.PI * 2)) < FRONT_BLOCK_HALF_ANGLE
+    const inFrontCenterLane =
+      Math.abs(targetX - PET_CENTER) < FRONT_BLOCK_HALF_WIDTH &&
+      targetY >= FRONT_BLOCK_Y_MIN
+    if (!inBlockedFrontCone && !inFrontCenterLane) {
+      return { targetX, targetY }
+    }
+  }
+
+  // Fallback to side lane if random attempts all hit blocked zone.
+  const sideSign = Math.random() > 0.5 ? 1 : -1
+  return {
+    targetX: PET_CENTER + sideSign * TARGET_RING_MAX_RADIUS * 0.8,
+    targetY: PET_WORLD_Y + 2,
+  }
 }
 
 /**
@@ -74,8 +106,7 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
   if (shouldSpawn) {
     const type = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)]!
     const spawnX = Math.random() * LOGICAL_WIDTH
-    const targetX = PET_CENTER + (Math.random() * 2 - 1) * MAX_ENEMY_SPREAD_X
-    const targetY = PET_WORLD_Y + (Math.random() * 2 - 1) * MAX_ENEMY_SPREAD_Y
+    const { targetX, targetY } = pickEnemyTargetAroundPet()
     enemies.push({
       id: crypto.randomUUID(),
       type,

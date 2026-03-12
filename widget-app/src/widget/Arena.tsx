@@ -76,57 +76,38 @@ function syncStageFromState(
   horizonGlow.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
   app.stage.addChild(horizonGlow)
 
-  // Pet with soft shadow and core.
+  // Pet color state.
   const petColor =
     pet.mood > 50
       ? COLORS_HEX.accent
       : pet.mood > 25
         ? COLORS_HEX.muted
         : COLORS_HEX.danger
-  const petShadow = new Graphics()
-  petShadow.ellipse(0, 0, 26, 9)
-  petShadow.fill({ color: COLORS_HEX.petShadow, alpha: 0.28 })
-  petShadow.x = centerX
-  petShadow.y = centerY + 24
-  app.stage.addChild(petShadow)
-
-  const petAura = new Graphics()
-  petAura.circle(0, 0, 28 + Math.sin(now / 220) * 2)
-  petAura.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
-  petAura.x = centerX
-  petAura.y = centerY
-  app.stage.addChild(petAura)
-
-  const petGfx = new Graphics()
-  petGfx.circle(0, 0, 20)
-  petGfx.fill(petColor)
-  petGfx.stroke({ width: 2, color: COLORS_HEX.border })
-
-  const petCore = new Graphics()
-  petCore.circle(0, 0, 10)
-  petCore.fill({ color: COLORS_HEX.textBright, alpha: 0.24 })
-
-  petGfx.x = centerX
-  petGfx.y = centerY
-  app.stage.addChild(petGfx)
-  petCore.x = centerX
-  petCore.y = centerY - 2
-  app.stage.addChild(petCore)
-
   // Enemies rise from the horizon and scale as they approach.
   const renderEnemies = [...state.arena.enemies]
     .slice(-14)
     .sort((a, b) => a.y - b.y)
-  for (const enemy of renderEnemies) {
-    const projected = projectWorldPoint(enemy.x, enemy.y, width, horizonY, centerY + 18)
-    const reveal = clamp01((projected.depth - 0.04) / 0.25)
-    const hitAgeMs = typeof enemy.lastHitAt === 'number' ? now - enemy.lastHitAt : Infinity
-    const hitFlash = clamp01(1 - hitAgeMs / 180)
-    const pulse =
-      0.1 +
-      ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
-    const enemySize = 4 + projected.depth * 16
+    .map((enemy) => {
+      const projected = projectWorldPoint(
+        enemy.x,
+        enemy.y,
+        width,
+        horizonY,
+        centerY + 18,
+      )
+      const reveal = clamp01((projected.depth - 0.04) / 0.25)
+      const hitAgeMs =
+        typeof enemy.lastHitAt === 'number' ? now - enemy.lastHitAt : Infinity
+      const hitFlash = clamp01(1 - hitAgeMs / 180)
+      const pulse =
+        0.1 +
+        ((Math.sin((now + enemy.x * 15 + enemy.y * 0.4) / 260) + 1) / 2) * 0.12
+      const enemySize = 4 + projected.depth * 16
+      return { projected, reveal, hitFlash, pulse, enemySize }
+    })
 
+  const drawEnemy = (enemy: (typeof renderEnemies)[number]): void => {
+    const { projected, reveal, hitFlash, pulse, enemySize } = enemy
     const enemyAura = new Graphics()
     enemyAura.circle(0, 0, enemySize * 0.9)
     enemyAura.fill({ color: COLORS_HEX.enemyCore, alpha: pulse * reveal })
@@ -157,6 +138,47 @@ function syncStageFromState(
       hitRing.y = projected.y
       app.stage.addChild(hitRing)
     }
+  }
+
+  // Draw enemies behind pet first to preserve depth.
+  for (const enemy of renderEnemies) {
+    if (enemy.projected.y <= centerY + 2) drawEnemy(enemy)
+  }
+
+  // Pet with soft shadow and core.
+  const petShadow = new Graphics()
+  petShadow.ellipse(0, 0, 26, 9)
+  petShadow.fill({ color: COLORS_HEX.petShadow, alpha: 0.28 })
+  petShadow.x = centerX
+  petShadow.y = centerY + 24
+  app.stage.addChild(petShadow)
+
+  const petAura = new Graphics()
+  petAura.circle(0, 0, 28 + Math.sin(now / 220) * 2)
+  petAura.fill({ color: COLORS_HEX.accent, alpha: 0.09 })
+  petAura.x = centerX
+  petAura.y = centerY
+  app.stage.addChild(petAura)
+
+  const petGfx = new Graphics()
+  petGfx.circle(0, 0, 20)
+  petGfx.fill(petColor)
+  petGfx.stroke({ width: 2, color: COLORS_HEX.border })
+
+  const petCore = new Graphics()
+  petCore.circle(0, 0, 10)
+  petCore.fill({ color: COLORS_HEX.textBright, alpha: 0.24 })
+
+  petGfx.x = centerX
+  petGfx.y = centerY
+  app.stage.addChild(petGfx)
+  petCore.x = centerX
+  petCore.y = centerY - 2
+  app.stage.addChild(petCore)
+
+  // Draw enemies in front after pet to complete 3D wrap-around.
+  for (const enemy of renderEnemies) {
+    if (enemy.projected.y > centerY + 2) drawEnemy(enemy)
   }
 
   // Projectiles with trails.
