@@ -92,6 +92,12 @@ export function Arena({ state, setState }: ArenaProps) {
         background: COLORS_HEX.bg,
         resizeTo: container,
         antialias: false,
+        eventFeatures: {
+          move: false,
+          globalMove: false,
+          click: false,
+          wheel: false,
+        },
       })
       if (!mounted) {
         app.destroy(true, { children: true })
