@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { tickArena } from '../domain/arena'
 import type { EnemyType, SaveState } from '../domain/types'
 import { COLORS } from '../theme/colors'
@@ -75,7 +75,7 @@ export function Arena({ state, setState }: ArenaProps) {
     [],
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 

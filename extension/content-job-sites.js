@@ -5,8 +5,6 @@
  */
 
 (function () {
-  const isDev = typeof chrome !== 'undefined' && chrome.runtime?.getManifest && !chrome.runtime.getManifest().update_url
-  const LOG = (...args) => { if (isDev) console.log('[GamedIn Job Sites]', ...args) }
   let parser
   try {
     parser = (typeof window !== 'undefined' && window.GAMEDIN_JOB_PARSER) || {}
@@ -16,17 +14,13 @@
   const { detectSite, extractJobInfo, hasApplySuccess, extractFromSuccessContext } = parser
 
   if (!detectSite || !extractJobInfo || !hasApplySuccess) {
-    LOG('Job parser not loaded, exiting')
     return
   }
 
   const site = detectSite(window.location.href)
   if (!site) {
-    LOG('Not a supported job site, exiting', { url: window.location.href })
     return
   }
-
-  LOG('Content script loaded', { site: site.id, url: window.location.href })
 
   function injectWidget() {
     try {
@@ -59,8 +53,8 @@
           /* ignore */
         }
       })
-    } catch (err) {
-      LOG('injectWidget error', err?.message || err)
+    } catch (_err) {
+      /* injectWidget error */
     }
   }
 
@@ -76,11 +70,9 @@
   function onApplySuccess(successNode) {
     const now = Date.now()
     if (now - lastSentAt < DEBOUNCE_MS) {
-      LOG('onApplySuccess: debounced (skip)')
       return
     }
     lastSentAt = now
-    LOG('onApplySuccess: detected apply success', { site: site.id })
 
     let { title, company } = extractJobInfo(document, site)
 
@@ -100,22 +92,13 @@
       company: company.substring(0, 80),
       source: site.source,
     }
-    LOG('onApplySuccess: sending to background', payload)
 
     try {
       chrome.runtime.sendMessage(
         { type: 'GAMEDIN_APPLY_DETECTED', payload },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            LOG('onApplySuccess: sendMessage error', chrome.runtime.lastError.message)
-          } else {
-            LOG('onApplySuccess: sent successfully', response)
-          }
-        },
+        (_response) => {},
       )
-    } catch (err) {
-      LOG('onApplySuccess: sendMessage threw', err?.message || err)
-    }
+    } catch (_err) {}
   }
 
   function checkNode(node) {
@@ -163,7 +146,6 @@
       const key = jobs.map((j) => j.jobId).join(',')
       if (key !== lastJobListKey) {
         lastJobListKey = key
-        LOG('Activity: job_list', { site: site.id, count: jobs.length })
         sendActivity('job_list', { count: jobs.length, jobs: jobs.slice(0, 50) })
       }
     }
@@ -183,11 +165,9 @@
 
   if (document.body) {
     observer.observe(document.body, { childList: true, subtree: true })
-    LOG('MutationObserver started')
   } else {
     document.addEventListener('DOMContentLoaded', () => {
       observer.observe(document.body, { childList: true, subtree: true })
-      LOG('MutationObserver started (after DOMContentLoaded)')
     })
   }
 
@@ -219,12 +199,10 @@
           } catch (_) {}
           if (keywords && keywords !== lastActivitySent.search_keyword) {
             lastActivitySent.search_keyword = keywords
-            LOG('Activity: search', { site: site.id, keywords })
             sendActivity('search', { keywords, location })
           }
           if (jobId && jobId !== lastActivitySent.job_viewed) {
             lastActivitySent.job_viewed = jobId
-            LOG('Activity: job_viewed', { site: site.id, jobId })
             sendActivity('job_viewed', { jobId })
           }
         }
@@ -236,7 +214,6 @@
           const jobId = m[1] || m[2] || ''
           if (jobId && jobId !== lastActivitySent.job_viewed) {
             lastActivitySent.job_viewed = jobId
-            LOG('Activity: job_viewed', { site: site.id, jobId })
             sendActivity('job_viewed', { jobId })
           }
         }
@@ -294,7 +271,6 @@
             const now = Date.now()
             if (!lastActivitySent[key] || now - lastActivitySent[key] > ACTIVITY_DEBOUNCE_MS) {
               lastActivitySent[key] = now
-              LOG('Activity: job_clicked', { site: site.id, jobId, title, company })
               sendActivity('job_clicked', { jobId, title, company })
             }
           }
@@ -303,7 +279,6 @@
       )
     }
 
-    LOG('Activity tracking started', { site: site.id })
   }
 
   // --- Page element capture (shared across sites) ---
@@ -417,7 +392,6 @@
       if (wasOnDetail) {
         const elapsed = Math.round((Date.now() - lastUrlChangeTime) / 1000)
         totalTimeOnDetailSec += elapsed
-        if (isDev) LOG('[URL] left job detail, added', elapsed, 's, total now:', totalTimeOnDetailSec)
       }
       lastUrl = url
       lastUrlChangeTime = Date.now()
@@ -482,13 +456,11 @@
       attachCount++
     }
     function observeScrollContainers() {
-      const prev = attachCount
       for (const sel of ps.scrollContainerSelectors) {
         try {
           document.querySelectorAll(sel).forEach(attachScroll)
         } catch (_) {}
       }
-      if (isDev && attachCount > prev) LOG('[Scroll] attached to', attachCount - prev, 'new container(s), total:', attachCount)
     }
     observeScrollContainers()
     const scrollMo = new MutationObserver(observeScrollContainers)
@@ -530,15 +502,12 @@
     )
     function observeCards() {
       const cards = document.querySelectorAll(act.jobList.cardSelector)
-      let observed = 0
       cards.forEach((card) => {
         if (!card.dataset?.gamedinObserved) {
           card.dataset.gamedinObserved = '1'
           observer.observe(card)
-          observed++
         }
       })
-      if (isDev && observed > 0) LOG('[Cards] observed', observed, 'new, total cards matched:', cards.length)
     }
     observeCards()
     const mo = new MutationObserver(observeCards)
@@ -560,7 +529,6 @@
         const title = (tEl?.textContent || '').trim().slice(0, 40)
         const company = (cEl?.textContent || '').trim().slice(0, 40)
         lastCardHovered = { jobId: getCardId(card), title, company }
-        if (isDev) LOG('[Hover] card', { jobId: lastCardHovered.jobId, title, company })
         lastCardHoverStart = Date.now()
         lastCardHoverDurationSec = 0
       },
@@ -605,6 +573,4 @@
   // Periodic page state send
   setInterval(sendPageState, PAGE_STATE_INTERVAL_MS)
   sendPageState()
-
-  LOG('Page element capture started', { site: site.id })
 })()

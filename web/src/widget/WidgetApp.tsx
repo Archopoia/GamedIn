@@ -205,13 +205,8 @@ export function WidgetApp() {
   }, [activeTab, fetchActivity])
 
   useEffect(() => {
-    const id = setInterval(fetchActivity, 5000)
-    return () => clearInterval(id)
-  }, [fetchActivity])
-
-  useEffect(() => {
-    if (activeTab !== 'pagedata') return
-    const id = setInterval(fetchActivity, 1000)
+    const intervalMs = activeTab === 'pagedata' ? 1000 : 5000
+    const id = setInterval(fetchActivity, intervalMs)
     return () => clearInterval(id)
   }, [activeTab, fetchActivity])
 
@@ -407,7 +402,7 @@ export function WidgetApp() {
   return (
     <div
       className="flex flex-col w-full h-full min-h-[180px] text-[13px] font-sans p-0"
-      style={activeTab && popupHeight > 0 ? { paddingTop: popupHeight } : undefined}
+      style={activeTab ? { paddingTop: popupHeight || 250 } : undefined}
     >
       <div className="flex-1 flex flex-col min-h-[180px] bg-gradient-to-t from-gamedin-bg-gradient to-gamedin-bg border-t-2 border-gamedin-success pointer-events-auto">
         <div className="relative shrink-0">
