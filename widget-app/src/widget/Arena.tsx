@@ -8,10 +8,6 @@ const ARENA_HEIGHT = 140
 const LOGICAL_WIDTH = 800
 const WORLD_HORIZON_Y = 120
 const WORLD_PET_Y = 860
-const debugPrevLayerByEnemy = new Map<
-  string,
-  { isBehindPet: boolean; drawByRenderY: boolean; lockedOnPet: boolean }
->()
 const TICK_MS = 100
 
 interface ArenaProps {
@@ -48,9 +44,6 @@ function syncStageFromState(
 ): void {
   app.stage.removeChildren()
   const now = Date.now()
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H14',location:'Arena.tsx:projection-build-marker',message:'Arena renderer build marker active',data:{projectionMode:'v2-linear-with-local-offset',width,height},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   // Background and vignette.
   const bg = new Graphics()
@@ -116,21 +109,6 @@ function syncStageFromState(
       const renderX = projected.x
       const renderY = projected.y
       const drawBehindPet = renderY <= centerY + 2
-      const prevLayer = debugPrevLayerByEnemy.get(enemy.id)
-      if (
-        prevLayer &&
-        (prevLayer.drawByRenderY !== drawBehindPet ||
-          prevLayer.lockedOnPet !== (enemy.lockedOnPet ?? false))
-      ) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H33',location:'Arena.tsx:render-layer-toggle',message:'Enemy render-layer toggle event',data:{enemyId:enemy.id,prevDrawBehind:prevLayer.drawByRenderY,nextDrawBehind:drawBehindPet,prevLockedOnPet:prevLayer.lockedOnPet,nextLockedOnPet:enemy.lockedOnPet ?? false,worldY:enemy.y,renderY,centerY},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
-      }
-      debugPrevLayerByEnemy.set(enemy.id, {
-        isBehindPet: drawBehindPet,
-        drawByRenderY: drawBehindPet,
-        lockedOnPet: enemy.lockedOnPet ?? false,
-      })
       return {
         enemyId: enemy.id,
         worldY: enemy.y,

@@ -24,9 +24,11 @@ const ENEMY_BASE_COLLIDER_RY = 6
 const LOCKED_SLIDE_SPEED = ENEMY_FORWARD_SPEED
 const LOCK_SLOT_CAPACITY = 14
 const LOCK_FINALIZE_DISTANCE = 1.5
+const BOUNDARY_ENGAGE_DISTANCE = 0.75
 const BASE_HIT_RADIUS = 7
 const HIT_RADIUS_BY_DEPTH = 6
 const PROJECTILE_COLLIDER_RADIUS = 3
+let spawnSlotCursor = 0
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
@@ -182,15 +184,29 @@ function stepOnContactBoundaryTowards(
   maxStep: number,
 ): { x: number; y: number; remaining: number } {
   const startsInside = isInsidePetContactCollider(fromX, fromY)
-  const fromPoint = startsInside
-    ? clampToPetContactBoundary(fromX, fromY)
-    : { x: fromX, y: fromY }
-  const dx = toX - fromPoint.x
-  const dy = toY - fromPoint.y
+  let currentX = fromX
+  let currentY = fromY
+  let remainingStep = maxStep
+
+  if (startsInside) {
+    const boundary = clampToPetContactBoundary(fromX, fromY)
+    const outDx = boundary.x - fromX
+    const outDy = boundary.y - fromY
+    const outDist = Math.hypot(outDx, outDy)
+    if (outDist > 0.0001) {
+      const outRatio = Math.min(1, remainingStep / outDist)
+      currentX = fromX + outDx * outRatio
+      currentY = fromY + outDy * outRatio
+      remainingStep = Math.max(0, remainingStep - outDist * outRatio)
+    }
+  }
+
+  const dx = toX - currentX
+  const dy = toY - currentY
   const distance = Math.hypot(dx, dy)
-  const ratio = distance > 0 ? Math.min(1, maxStep / distance) : 1
-  const linearX = fromPoint.x + dx * ratio
-  const linearY = fromPoint.y + dy * ratio
+  const ratio = distance > 0 ? Math.min(1, remainingStep / distance) : 1
+  const linearX = currentX + dx * ratio
+  const linearY = currentY + dy * ratio
   const moved = isInsidePetContactCollider(linearX, linearY)
     ? clampToPetContactBoundary(linearX, linearY)
     : { x: linearX, y: linearY }
@@ -211,17 +227,31 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
   const approachVerticalExclusion = 0.42
 
   // 1. Move enemies directly toward their assigned boundary slots.
+  // Reserve locked enemy slots first so travelers adapt around settled enemies.
   const normalizedClaimed = new Set<number>()
+  for (const existingEnemy of arena.enemies) {
+    const slot = existingEnemy.lockSlot
+    if (
+      existingEnemy.lockedOnPet &&
+      typeof slot === 'number' &&
+      Number.isFinite(slot) &&
+      slot >= 0 &&
+      slot < LOCK_SLOT_CAPACITY
+    ) {
+      normalizedClaimed.add(slot)
+    }
+  }
   let enemies = arena.enemies.map((sourceEnemy) => {
     let enemy = sourceEnemy
-    const hasValidUniqueSlot =
-      typeof enemy.lockSlot === 'number' &&
-      Number.isFinite(enemy.lockSlot) &&
-      enemy.lockSlot >= 0 &&
-      enemy.lockSlot < LOCK_SLOT_CAPACITY &&
-      !normalizedClaimed.has(enemy.lockSlot)
+    const candidateSlot = Number(enemy.lockSlot ?? -1)
+    const hasValidSlot =
+      Number.isFinite(candidateSlot) &&
+      candidateSlot >= 0 &&
+      candidateSlot < LOCK_SLOT_CAPACITY
+    const hasReusableSlot =
+      hasValidSlot && ((enemy.lockedOnPet ?? false) || !normalizedClaimed.has(candidateSlot))
 
-    if (!hasValidUniqueSlot) {
+    if (!hasReusableSlot) {
       const assignedSlot = findBestAvailableSlotIndex(
         enemy.x,
         enemy.y,
@@ -244,9 +274,6 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
         targetX: slotPoint.x,
         targetY: slotPoint.y,
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H31',location:'arena-sim.ts:normalize-slot-target',message:'Normalized enemy to unique slot target',data:{enemyId:enemy.id,assignedSlot,targetX:slotPoint.x,targetY:slotPoint.y},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
     }
 
     normalizedClaimed.add(Number(enemy.lockSlot ?? 0))
@@ -260,9 +287,6 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
 
     const targetGap = Math.hypot(enemy.targetX - slotPoint.x, enemy.targetY - slotPoint.y)
     if (targetGap > 0.75) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H32',location:'arena-sim.ts:slot-target-drift',message:'Enemy target drifted from assigned slot and was corrected',data:{enemyId:enemy.id,slot:enemy.lockSlot,targetX:enemy.targetX,targetY:enemy.targetY,slotX:slotPoint.x,slotY:slotPoint.y,targetGap},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       enemy = { ...enemy, targetX: slotPoint.x, targetY: slotPoint.y }
     }
 
@@ -294,13 +318,17 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       segmentHitsPetContactCollider(enemy.x, enemy.y, nextX, nextY) ||
       isInsidePetContactCollider(nextX, nextY)
     ) {
-      const moved = moveTowardBoundary(enemy.x, enemy.y, LOCKED_SLIDE_SPEED * step, true)
-      const jumpToBoundary = Math.hypot(moved.x - enemy.x, moved.y - enemy.y)
-      if (jumpToBoundary > LOCKED_SLIDE_SPEED * step * 1.15) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H34',location:'arena-sim.ts:movement-snap-detected',message:'Detected large boundary snap step',data:{enemyId:enemy.id,slot:enemy.lockSlot,fromX:enemy.x,fromY:enemy.y,nextX,nextY,movedX:moved.x,movedY:moved.y,jumpToBoundary,maxExpected:LOCKED_SLIDE_SPEED * step * 1.15,lockedAfterMove:moved.lockedOnPet},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
+      const distToSlotFromCurrent = Math.hypot(slotPoint.x - enemy.x, slotPoint.y - enemy.y)
+      const shouldUseBoundaryGuidance =
+        distToSlotFromCurrent <= BOUNDARY_ENGAGE_DISTANCE ||
+        isInsidePetContactCollider(enemy.x, enemy.y) ||
+        isInsidePetContactCollider(nextX, nextY)
+      if (
+        !shouldUseBoundaryGuidance
+      ) {
+        return { ...enemy, x: nextX, y: nextY, lockedOnPet: false }
       }
+      const moved = moveTowardBoundary(enemy.x, enemy.y, LOCKED_SLIDE_SPEED * step, true)
       return { ...enemy, ...moved }
     }
 
@@ -327,15 +355,19 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
         spawnUsedSlots.add(slot)
       }
     }
-    const spawnSlot = findBestAvailableSlotIndex(
-      spawnX,
-      HORIZON_Y,
-      spawnUsedSlots,
-      LOCK_SLOT_CAPACITY,
-      approachVerticalExclusion,
-      approachCombinedRx,
-      approachCombinedRy,
-    )
+    let spawnSlot = ((spawnSlotCursor % LOCK_SLOT_CAPACITY) + LOCK_SLOT_CAPACITY) % LOCK_SLOT_CAPACITY
+    spawnSlotCursor = (spawnSlotCursor + 1) % LOCK_SLOT_CAPACITY
+    if (spawnUsedSlots.has(spawnSlot)) {
+      spawnSlot = findBestAvailableSlotIndex(
+        spawnX,
+        HORIZON_Y,
+        spawnUsedSlots,
+        LOCK_SLOT_CAPACITY,
+        approachVerticalExclusion,
+        approachCombinedRx,
+        approachCombinedRy,
+      )
+    }
     const slotTarget = getSlotBoundaryPoint(
       spawnSlot,
       LOCK_SLOT_CAPACITY,
@@ -357,9 +389,6 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       lockedOnPet: false,
       hp: 3,
     })
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H31',location:'arena-sim.ts:spawn-slot-target',message:'Spawned enemy with fixed slot target from start',data:{enemyId,spawnX,spawnY:HORIZON_Y,spawnSlot,targetX,targetY,usedSlots:[...spawnUsedSlots]},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
     nextLastSpawn = now
   }
 
