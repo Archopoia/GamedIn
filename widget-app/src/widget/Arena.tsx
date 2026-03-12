@@ -27,9 +27,12 @@ function projectWorldPoint(
   petY: number,
 ): { x: number; y: number; depth: number } {
   const depth = clamp01((worldY - WORLD_HORIZON_Y) / (WORLD_PET_Y - WORLD_HORIZON_Y))
-  const perspectiveT = 1 - (1 - depth) ** 1.3
+  const perspectiveT = depth
   const screenX = (worldX / LOGICAL_WIDTH) * width
-  const screenY = horizonY + (petY - horizonY) * perspectiveT
+  const baseY = horizonY + (petY - horizonY) * perspectiveT
+  const nearPetWeight = clamp01((worldY - (WORLD_PET_Y - 110)) / 150)
+  const localYOffset = (worldY - WORLD_PET_Y) * 0.34 * nearPetWeight
+  const screenY = baseY + localYOffset
   return { x: screenX, y: screenY, depth }
 }
 
@@ -41,6 +44,9 @@ function syncStageFromState(
 ): void {
   app.stage.removeChildren()
   const now = Date.now()
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H14',location:'Arena.tsx:projection-build-marker',message:'Arena renderer build marker active',data:{projectionMode:'v2-linear-with-local-offset',width,height},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
 
   // Background and vignette.
   const bg = new Graphics()
@@ -155,6 +161,9 @@ function syncStageFromState(
     if (enemy.lockedOnPet && Math.abs(enemy.projected.y - centerY) < 18) {
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H8',location:'Arena.tsx:locked-layer-snapshot',message:'Locked enemy render layer decision',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,side:enemy.worldY >= WORLD_PET_Y ? 'front' : 'back',projectedY:enemy.projected.y,centerY,drawLayer:enemy.projected.y <= centerY + 2 ? 'behind' : 'front',depth:enemy.projected.depth},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H13',location:'Arena.tsx:locked-projected-spread',message:'Locked enemy projected spread sample',data:{enemyId:enemy.enemyId,worldY:enemy.worldY,projectedY:enemy.projected.y,centerY,depth:enemy.projected.depth,isBehindPet:enemy.isBehindPet},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
     }
     if (
@@ -308,19 +317,9 @@ export function Arena({ state, setState }: ArenaProps) {
     return () => cancelAnimationFrame(rafId)
   }, [setState])
 
-  const pet = state.arena.pet
-  const moodLabel =
-    pet.mood > 50 ? 'healthy' : pet.mood > 25 ? 'hungry' : 'starving'
-
   return (
     <div className="w-full h-[140px] relative">
       <div ref={containerRef} className="w-full h-[140px] block" />
-      <div
-        className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-gamedin-muted pointer-events-none px-2 py-0.5 rounded-full border border-gamedin-border/60 bg-gamedin-bg/60 backdrop-blur-[1px]"
-        title={`Cope Pet: mood reflects apply activity. ${moodLabel.charAt(0).toUpperCase() + moodLabel.slice(1)} = ${Math.round(pet.mood)}. Apply to feed it.`}
-      >
-        Cope Pet ({moodLabel}). Apply to feed it.
-      </div>
     </div>
   )
 }

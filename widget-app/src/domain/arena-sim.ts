@@ -20,10 +20,12 @@ const FIRE_INTERVAL_MS = 800
 const PROJECTILE_SPEED = 8
 const PET_CENTER = 400
 const PET_CONTACT_HOLD_RADIUS = 26
-const PET_BASE_COLLIDER_RX = 30
-const PET_BASE_COLLIDER_RY = 20
+const PET_BASE_COLLIDER_RX = 58
+const PET_BASE_COLLIDER_RY = 42
 const ENEMY_BASE_COLLIDER_RX = 7
 const ENEMY_BASE_COLLIDER_RY = 6
+const LOCKED_SLIDE_SPEED = ENEMY_FORWARD_SPEED
+const LOCKED_MIN_SEPARATION = 18
 const BASE_HIT_RADIUS = 7
 const HIT_RADIUS_BY_DEPTH = 6
 const PROJECTILE_COLLIDER_RADIUS = 3
@@ -108,6 +110,29 @@ function clampToPetContactBoundary(
   }
 }
 
+function sideSignFromEnemy(enemyId: string): 1 | -1 {
+  let hash = 0
+  for (let i = 0; i < enemyId.length; i += 1) {
+    hash = (hash + enemyId.charCodeAt(i)) | 0
+  }
+  return hash % 2 === 0 ? 1 : -1
+}
+
+function slotAngleAt(
+  index: number,
+  count: number,
+  excludeVerticalHalfAngle: number,
+): number {
+  const arc1 = Math.PI / 2 - excludeVerticalHalfAngle
+  const arc2 = Math.PI - 2 * excludeVerticalHalfAngle
+  const arc3 = Math.PI / 2 - excludeVerticalHalfAngle
+  const totalArc = arc1 + arc2 + arc3
+  const u = ((index + 0.5) / Math.max(count, 1)) * totalArc
+  if (u < arc1) return u
+  if (u < arc1 + arc2) return Math.PI / 2 + excludeVerticalHalfAngle + (u - arc1)
+  return (Math.PI * 3) / 2 + excludeVerticalHalfAngle + (u - arc1 - arc2)
+}
+
 function pickEnemyTargetAroundPet(): { targetX: number; targetY: number } {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const angle = Math.random() * Math.PI * 2
@@ -147,7 +172,7 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
 
   // 1. Move enemies from horizon toward pet ring.
   let enemies = arena.enemies.map((e) => {
-    if (e.lockedOnPet) return e
+    if (e.lockedOnPet) return { ...e, ...clampToPetContactBoundary(e.x, e.y) }
 
     const currentDxToPet = e.x - PET_CENTER
     const currentDyToPet = e.y - PET_WORLD_Y
@@ -162,8 +187,13 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H1',location:'arena-sim.ts:contact-lock-current',message:'Enemy locked from current position',data:{enemyId:e.id,x:e.x,y:e.y,lockedOnPet:e.lockedOnPet ?? false,currentDistToPet,insideContactEllipse:isInsidePetContactCollider(e.x,e.y)},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-current',message:'Locked enemy side snapshot',data:{enemyId:e.id,lockY:clamped.y,side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-current',message:'Locked enemy side snapshot',data:{enemyId:e.id,lockX:clamped.x,lockY:clamped.y,absXToCenter:Math.abs(clamped.x-PET_CENTER),side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
+      if (Math.abs(clamped.x - e.x) > 6) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H9',location:'arena-sim.ts:side-spread-current',message:'Applied lateral spread on pet lock',data:{enemyId:e.id,fromX:e.x,toX:clamped.x,targetX:e.targetX,lockY:clamped.y},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+      }
       return { ...e, x: clamped.x, y: clamped.y, lockedOnPet: true }
     }
 
@@ -178,8 +208,13 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
       fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H2',location:'arena-sim.ts:contact-lock-segment',message:'Enemy path intersects pet contact ellipse',data:{enemyId:e.id,fromX:e.x,fromY:e.y,toX:nextX,toY:nextY,clampedX:clamped.x,clampedY:clamped.y,targetX:e.targetX,targetY:e.targetY},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-segment',message:'Locked enemy side snapshot',data:{enemyId:e.id,fromY:e.y,toY:nextY,lockY:clamped.y,side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'pre-fix',hypothesisId:'H7',location:'arena-sim.ts:lock-side-segment',message:'Locked enemy side snapshot',data:{enemyId:e.id,fromY:e.y,toY:nextY,lockX:clamped.x,lockY:clamped.y,absXToCenter:Math.abs(clamped.x-PET_CENTER),side:clamped.y >= PET_WORLD_Y ? 'front' : 'back',targetY:e.targetY,targetSide:e.targetY >= PET_WORLD_Y ? 'front' : 'back'},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
+      if (Math.abs(clamped.x - nextX) > 6) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H9',location:'arena-sim.ts:side-spread-segment',message:'Applied lateral spread on pet lock',data:{enemyId:e.id,fromX:nextX,toX:clamped.x,targetX:e.targetX,lockY:clamped.y},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+      }
       return { ...e, x: clamped.x, y: clamped.y, lockedOnPet: true }
     }
     const nextDxToPet = nextX - PET_CENTER
@@ -217,6 +252,66 @@ export function tickArena(state: SaveState, dtMs: number): SaveState {
     }
     return { ...e, x: nextX, y: nextY }
   })
+
+  // Assign locked enemies to angular slots around the pet boundary.
+  const lockedIndices = enemies
+    .map((enemy, idx) => ({ enemy, idx }))
+    .filter((item) => item.enemy.lockedOnPet)
+    .sort((a, b) => a.enemy.id.localeCompare(b.enemy.id))
+  if (lockedIndices.length > 0) {
+    const combinedRx = PET_BASE_COLLIDER_RX + ENEMY_BASE_COLLIDER_RX
+    const combinedRy = PET_BASE_COLLIDER_RY + ENEMY_BASE_COLLIDER_RY
+    const verticalExclusion = 0.42
+    for (let slot = 0; slot < lockedIndices.length; slot += 1) {
+      const item = lockedIndices[slot]
+      const enemy = item.enemy
+      const angle = slotAngleAt(slot, lockedIndices.length, verticalExclusion)
+      const desiredX = PET_CENTER + Math.cos(angle) * combinedRx
+      const desiredY = PET_WORLD_Y + Math.sin(angle) * combinedRy
+      const dx = desiredX - enemy.x
+      const dy = desiredY - enemy.y
+      const distance = Math.hypot(dx, dy)
+      const maxStep = LOCKED_SLIDE_SPEED * step
+      const ratio = distance > 0 ? Math.min(1, maxStep / distance) : 0
+      const movedX = enemy.x + dx * ratio
+      const movedY = enemy.y + dy * ratio
+      const moved = clampToPetContactBoundary(movedX, movedY)
+      enemies[item.idx] = { ...enemy, x: moved.x, y: moved.y }
+      if (distance > 0.5) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H12',location:'arena-sim.ts:locked-slot-move',message:'Moved locked enemy toward surround slot',data:{enemyId:enemy.id,slot,totalLocked:lockedIndices.length,fromX:enemy.x,fromY:enemy.y,toX:moved.x,toY:moved.y,desiredX,desiredY,maxStep},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+      }
+    }
+  }
+
+  // Separate locked enemies so they surround instead of stacking.
+  const separatedEnemies = [...enemies]
+  for (let i = 0; i < separatedEnemies.length; i += 1) {
+    const a = separatedEnemies[i]
+    if (!a?.lockedOnPet) continue
+    for (let j = i + 1; j < separatedEnemies.length; j += 1) {
+      const b = separatedEnemies[j]
+      if (!b?.lockedOnPet) continue
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const distance = Math.hypot(dx, dy)
+      if (distance >= LOCKED_MIN_SEPARATION) continue
+      const overlap = (LOCKED_MIN_SEPARATION - distance) / 2
+      const ux = distance > 0.001 ? dx / distance : sideSignFromEnemy(a.id)
+      const uy = distance > 0.001 ? dy / distance : 0
+
+      const movedA = clampToPetContactBoundary(a.x - ux * overlap, a.y - uy * overlap)
+      const movedB = clampToPetContactBoundary(b.x + ux * overlap, b.y + uy * overlap)
+      separatedEnemies[i] = { ...a, x: movedA.x, y: movedA.y }
+      separatedEnemies[j] = { ...b, x: movedB.x, y: movedB.y }
+
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/4d53840f-0232-4abd-ad6b-8bc613945405',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({runId:'post-fix',hypothesisId:'H11',location:'arena-sim.ts:locked-separation',message:'Separated overlapping locked enemies',data:{enemyA:a.id,enemyB:b.id,distance,overlap,movedAX:movedA.x,movedBX:movedB.x},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+    }
+  }
+  enemies = separatedEnemies
 
   // 2. Spawn enemies
   const lastSpawn = arena.lastSpawnAt ?? now
